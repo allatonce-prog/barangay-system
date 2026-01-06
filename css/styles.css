@@ -1,51 +1,51 @@
 /* ========================================
-   ROOT VARIABLES & DESIGN TOKENS
+   ROOT VARIABLES & DESIGN TOKENS - DARK THEME
    ======================================== */
 :root {
-    /* Modern Color Palette - Vibrant & Professional */
-    --primary-color: #6366f1;
-    --primary-dark: #4f46e5;
-    --primary-light: #818cf8;
-    --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    /* Modern Color Palette - Dark Theme */
+    --primary-color: #818cf8;
+    --primary-dark: #6366f1;
+    --primary-light: #a5b4fc;
+    --primary-gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
 
-    --secondary-color: #06b6d4;
-    --secondary-dark: #0891b2;
-    --secondary-light: #22d3ee;
+    --secondary-color: #22d3ee;
+    --secondary-dark: #06b6d4;
+    --secondary-light: #67e8f9;
 
-    --accent-color: #f59e0b;
-    --accent-gradient: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    --accent-color: #fbbf24;
+    --accent-gradient: linear-gradient(135deg, #fbbf24 0%, #fb923c 100%);
 
-    --success-color: #10b981;
-    --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --success-color: #34d399;
+    --success-gradient: linear-gradient(135deg, #34d399 0%, #10b981 100%);
 
-    --danger-color: #ef4444;
-    --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    --danger-color: #f87171;
+    --danger-gradient: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
 
-    --warning-color: #f59e0b;
-    --info-color: #3b82f6;
+    --warning-color: #fbbf24;
+    --info-color: #60a5fa;
 
-    /* Neutral Colors - Modern & Clean */
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
+    /* Dark Theme Colors */
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
     --text-light: #94a3b8;
-    --text-muted: #cbd5e1;
+    --text-muted: #64748b;
 
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
-    --bg-tertiary: #f1f5f9;
-    --bg-hover: #e2e8f0;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --bg-hover: #475569;
 
-    --border-color: #e2e8f0;
-    --border-light: #f1f5f9;
+    --border-color: #334155;
+    --border-light: #475569;
 
-    /* Modern Shadows - Layered & Soft */
-    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-sm: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-    --shadow-colored: 0 10px 25px -5px rgba(99, 102, 241, 0.25);
+    /* Modern Shadows - Dark Theme */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 2px 4px -1px rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    --shadow-colored: 0 10px 25px -5px rgba(129, 140, 248, 0.4);
 
     /* Spacing - Consistent Scale */
     --spacing-xs: 0.25rem;
