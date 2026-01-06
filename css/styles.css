@@ -1048,7 +1048,7 @@ a:hover {
 table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
+    background: var(--bg-secondary);
 }
 
 thead {
