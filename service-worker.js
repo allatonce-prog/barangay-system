@@ -2,31 +2,31 @@
 // SERVICE WORKER - Offline Caching & PWA
 // ========================================
 
-const CACHE_NAME = 'barangay-drs-v2';
+const CACHE_NAME = 'barangay-drs-v3';
 const urlsToCache = [
-    '/',
-    '/index.html',
-    '/css/styles.css',
-    '/css/modern-enhancements.css',
-    '/js/app.js',
-    '/js/auth.js',
-    '/js/resident.js',
-    '/js/admin.js',
-    '/js/notifications.js',
-    '/js/appointments.js',
-    '/js/payments.js',
-    '/js/announcements.js',
-    '/js/reports.js',
-    '/js/utils.js',
-    '/manifest.json',
-    '/icons/icon-72x72.png',
-    '/icons/icon-96x96.png',
-    '/icons/icon-128x128.png',
-    '/icons/icon-144x144.png',
-    '/icons/icon-152x152.png',
-    '/icons/icon-192x192.png',
-    '/icons/icon-384x384.png',
-    '/icons/icon-512x512.png'
+    './',
+    './index.html',
+    './css/styles.css',
+    './css/modern-enhancements.css',
+    './js/app.js',
+    './js/auth.js',
+    './js/resident.js',
+    './js/admin.js',
+    './js/notifications.js',
+    './js/appointments.js',
+    './js/payments.js',
+    './js/announcements.js',
+    './js/reports.js',
+    './js/utils.js',
+    './manifest.json',
+    './icons/icon-72x72.png',
+    './icons/icon-96x96.png',
+    './icons/icon-128x128.png',
+    './icons/icon-144x144.png',
+    './icons/icon-152x152.png',
+    './icons/icon-192x192.png',
+    './icons/icon-384x384.png',
+    './icons/icon-512x512.png'
 ];
 
 // Install Event - Cache resources
