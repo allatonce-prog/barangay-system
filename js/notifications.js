@@ -84,10 +84,18 @@ function updateNotificationBadge() {
 // ========================================
 
 function showNotifications() {
-    if (!AppState.currentUser) return;
+    console.log('[Notifications] showNotifications called');
+    console.log('[Notifications] AppState.currentUser:', AppState.currentUser);
+    
+    if (!AppState.currentUser) {
+        console.error('[Notifications] No current user found');
+        return;
+    }
 
     const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+    console.log('[Notifications] All notifications:', allNotifications);
     const userNotifications = allNotifications.filter(n => n.userId === AppState.currentUser.id);
+    console.log('[Notifications] User notifications:', userNotifications);
 
     const notificationsList = userNotifications.length === 0
         ? '<div style="text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);">No notifications</div>'
@@ -117,6 +125,10 @@ function showNotifications() {
             </div>
         `).join('');
 
+    console.log('[Notifications] Creating modal...');
+    console.log('[Notifications] createModal function exists:', typeof createModal);
+    console.log('[Notifications] showModal function exists:', typeof showModal);
+    
     const modal = createModal('Notifications', `
         <div style="max-height: 60vh; overflow-y: auto;">
             ${notificationsList}
@@ -130,7 +142,9 @@ function showNotifications() {
         { text: 'Close', class: 'btn-outline', action: 'close' }
     ]);
 
+    console.log('[Notifications] Modal HTML created:', modal ? 'Yes' : 'No');
     showModal(modal);
+    console.log('[Notifications] showModal called');
 }
 
 // ========================================
