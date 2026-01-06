@@ -407,10 +407,11 @@ a:hover {
     font-size: var(--font-size-base);
     transition: background var(--transition-fast);
     text-align: left;
+    background: transparent;
 }
 
 .menu-item:hover {
-    background: var(--bg-secondary);
+    background: var(--bg-tertiary);
 }
 
 .menu-item svg {
@@ -1352,11 +1353,11 @@ tr:hover {
 }
 
 .install-prompt-content {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: var(--radius-xl);
     padding: var(--spacing-lg);
     box-shadow: var(--shadow-2xl);
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
