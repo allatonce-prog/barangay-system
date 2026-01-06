@@ -237,6 +237,38 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Handle login page install button
+document.addEventListener('DOMContentLoaded', () => {
+    const loginInstallBtn = document.getElementById('loginInstallBtn');
+    
+    if (loginInstallBtn) {
+        loginInstallBtn.addEventListener('click', () => {
+            console.log('[PWA Install] Login install button clicked');
+            const platform = detectPlatform();
+            
+            if (platform.isIOS) {
+                showIOSInstructions();
+            } else if (deferredPrompt) {
+                // Show native install prompt for Android
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('[PWA Install] User accepted the install prompt');
+                    } else {
+                        console.log('[PWA Install] User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                // Fallback - show instructions
+                showIOSInstructions();
+            }
+        });
+    }
+});
+
 // Make functions globally available
-window.closeInstallPrompt = closeInstallPrompt;
 window.showInstallPrompt = showInstallPrompt;
+window.closeInstallPrompt = closeInstallPrompt;
+
+console.log('[PWA Install] Module loaded');

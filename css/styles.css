@@ -794,17 +794,56 @@ a:hover {
    LOGIN/REGISTER SCREENS
    ======================================== */
 .login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    padding: var(--spacing-lg);
+    position: relative;
+}
+
+/* Login Install Banner */
+.login-install-banner {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+    padding: var(--spacing-sm) var(--spacing-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    animation: slideDown 0.3s ease-out;
+}
+
+.login-install-content {
+    max-width: 500px;
+    margin: 0 auto;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: var(--spacing-md);
-    z-index: 10000;
+    justify-content: space-between;
+    color: white;
+    font-size: var(--font-size-sm);
+}
+
+.login-install-content svg {
+    flex-shrink: 0;
+}
+
+.login-install-content span {
+    font-weight: 500;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .login-container {
