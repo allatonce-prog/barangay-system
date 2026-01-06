@@ -179,6 +179,33 @@
         <!-- Toast Notification -->
         <div id="toast" class="toast"></div>
 
+        <!-- PWA Install Prompt -->
+        <div id="installPrompt" class="install-prompt" style="display: none;">
+            <div class="install-prompt-content">
+                <button class="install-prompt-close" onclick="closeInstallPrompt()" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="install-prompt-icon">
+                    <img src="icons/icon-192x192.png" alt="App Icon">
+                </div>
+                <div class="install-prompt-text">
+                    <h3>Install Barangay DRS</h3>
+                    <p id="installPromptMessage">Add this app to your home screen for quick access</p>
+                </div>
+                <button id="installButton" class="btn btn-primary install-prompt-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Install App
+                </button>
+            </div>
+        </div>
+
     </div>
 
     <!-- Login Screen -->
@@ -261,6 +288,7 @@
     <script src="js/announcements.js"></script>
     <script src="js/reports.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/pwa-install.js"></script>
 
     <!-- Service Worker Registration -->
     <script>
