@@ -94,7 +94,14 @@ function setupEventListeners() {
     // Notification button
     const notificationBtn = document.getElementById('notificationBtn');
     if (notificationBtn) {
-        notificationBtn.addEventListener('click', showNotifications);
+        notificationBtn.addEventListener('click', () => {
+            console.log('Notification button clicked');
+            if (typeof showNotifications === 'function') {
+                showNotifications();
+            } else {
+                console.error('showNotifications function not found');
+            }
+        });
     }
 }
 

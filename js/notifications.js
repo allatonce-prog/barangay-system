@@ -241,3 +241,5 @@ window.updateNotificationBadge = updateNotificationBadge;
 window.showNotifications = showNotifications;
 window.handleNotificationClick = handleNotificationClick;
 window.markAllAsRead = markAllAsRead;
+
+console.log('[Notifications] Module loaded, showNotifications available:', typeof showNotifications);
