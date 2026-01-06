@@ -1,7 +1,7 @@
 {
-  "name": "Barangay Document Request System",
-  "short_name": "Barangay DRS",
-  "description": "Request and track your barangay documents online",
+  "name": "BrgyONE - Barangay Document Request System",
+  "short_name": "BrgyONE",
+  "description": "Request and track your barangay documents online with BrgyONE",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

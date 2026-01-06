@@ -2,7 +2,7 @@
 // SERVICE WORKER - Offline Caching & PWA
 // ========================================
 
-const CACHE_NAME = 'barangay-drs-v6';
+const CACHE_NAME = 'brgyone-v1';
 const urlsToCache = [
     './',
     './index.html',
@@ -203,7 +203,7 @@ self.addEventListener('push', (event) => {
     };
 
     event.waitUntil(
-        self.registration.showNotification('Barangay DRS', options)
+        self.registration.showNotification('BrgyONE', options)
     );
 });
 

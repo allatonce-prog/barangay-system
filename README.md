@@ -1,6 +1,6 @@
-# Barangay Document Request System (PWA)
+# BrgyONE - Barangay Document Request System
 
-A modern, mobile-responsive Progressive Web App for managing barangay document requests and community services.
+A modern Progressive Web App (PWA) for managing barangay document requests and community services.
 
 ## 🚀 Features
 
