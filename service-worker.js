@@ -2,7 +2,7 @@
 // SERVICE WORKER - Offline Caching & PWA
 // ========================================
 
-const CACHE_NAME = 'barangay-drs-v4';
+const CACHE_NAME = 'barangay-drs-v6';
 const urlsToCache = [
     './',
     './index.html',
