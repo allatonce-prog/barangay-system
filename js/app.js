@@ -349,6 +349,8 @@ function loadHomePage(container) {
 }
 
 function loadRequestsPage(container) {
+    console.log('[App] Loading requests page...');
+    
     container.innerHTML = `
         <div class="page-header">
             <h2>My Requests</h2>
@@ -368,7 +370,55 @@ function loadRequestsPage(container) {
         </div>
     `;
 
-    loadAllRequests();
+    displayUserRequests();
+}
+
+function displayUserRequests() {
+    console.log('[App] Displaying user requests...');
+    const requestsList = document.getElementById('requestsList');
+    
+    if (!requestsList) {
+        console.error('[App] requestsList element not found');
+        return;
+    }
+    
+    const userRequests = getUserRequests();
+    console.log('[App] User requests:', userRequests);
+
+    if (userRequests.length === 0) {
+        requestsList.innerHTML = `
+            <div style="text-align: center; padding: var(--spacing-2xl); color: var(--text-secondary);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: var(--spacing-md); opacity: 0.3;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <p>No requests yet. Click "New Request" to get started!</p>
+            </div>
+        `;
+        return;
+    }
+
+    const requestsHTML = userRequests.map(request => `
+        <div class="request-item" style="padding: var(--spacing-md); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); cursor: pointer; transition: all var(--transition-fast);" 
+             onclick="viewRequestDetails('${request.id}')"
+             onmouseover="this.style.borderColor='var(--primary-color)'; this.style.boxShadow='var(--shadow-md)'"
+             onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
+                <div>
+                    <h4 style="margin: 0; color: var(--text-primary);">${request.documentType}</h4>
+                    <p style="margin: var(--spacing-xs) 0 0 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
+                        Tracking: ${request.trackingNumber}
+                    </p>
+                </div>
+                <span class="badge badge-${request.status}">${request.status}</span>
+            </div>
+            <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
+                Submitted: ${new Date(request.createdAt).toLocaleDateString()}
+            </p>
+        </div>
+    `).join('');
+
+    requestsList.innerHTML = requestsHTML;
 }
 
 function loadTrackPage(container) {
