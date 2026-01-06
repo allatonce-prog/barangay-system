@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="Barangay Document Request System - Request and track your barangay documents online">
+        content="BrgyONE - Request and track your barangay documents online">
     <meta name="theme-color" content="#2563eb">
 
     <!-- PWA Meta Tags -->
@@ -14,7 +14,7 @@
     <!-- iOS Specific Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Barangay DRS">
+    <meta name="apple-mobile-web-app-title" content="BrgyONE">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="apple-touch-icon" sizes="72x72" href="icons/icon-72x72.png">
     <link rel="apple-touch-icon" sizes="96x96" href="icons/icon-96x96.png">
@@ -31,7 +31,7 @@
     <!-- Prevent iOS from auto-detecting phone numbers -->
     <meta name="format-detection" content="telephone=no">
 
-    <title>Barangay Document Request System</title>
+    <title>BrgyONE - Barangay Document Request System</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/modern-enhancements.css">
 </head>
@@ -51,7 +51,7 @@
             <div class="header-content">
                 <div class="logo-section">
                     <div class="logo" style="font-size: 32px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">🏛️</div>
-                    <h1 class="app-title">Barangay DRS</h1>
+                    <h1 class="app-title">BrgyONE</h1>
                 </div>
                 <div class="header-actions">
                     <button id="notificationBtn" class="icon-btn" aria-label="Notifications">
@@ -192,7 +192,7 @@
                     <div style="font-size: 56px; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">🏛️</div>
                 </div>
                 <div class="install-prompt-text">
-                    <h3>Install Barangay DRS</h3>
+                    <h3>Install BrgyONE</h3>
                     <p id="installPromptMessage">Add this app to your home screen for quick access</p>
                 </div>
                 <button id="installButton" class="btn btn-primary install-prompt-btn">
@@ -294,7 +294,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/barangay-system/service-worker.js')
+                navigator.serviceWorker.register('./service-worker.js')
                     .then(registration => {
                         console.log('Service Worker registered successfully:', registration.scope);
                     })
