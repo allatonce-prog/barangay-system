@@ -610,31 +610,91 @@ function showInstallPrompt() {
 
 function showProfileModal() {
     const modal = createModal('Profile', `
-        <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" value="${AppState.currentUser.fullName}" readonly>
-        </div>
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" value="${AppState.currentUser.username}" readonly>
-        </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="text" value="${AppState.currentUser.email}" readonly>
-        </div>
-        <div class="form-group">
-            <label>Address</label>
-            <input type="text" value="${AppState.currentUser.address || 'N/A'}" readonly>
-        </div>
-        <div class="form-group">
-            <label>Role</label>
-            <input type="text" value="${AppState.currentUser.role}" readonly style="text-transform: capitalize;">
-        </div>
-    `, [
-        { text: 'Close', class: 'btn-outline', action: 'close' }
-    ]);
+        <form id="profileForm" onsubmit="handleProfileUpdate(event)">
+            <div class="form-group">
+                <label for="profileFullName">Full Name</label>
+                <input type="text" id="profileFullName" value="${AppState.currentUser.fullName}" required>
+            </div>
+            <div class="form-group">
+                <label for="profileUsername">Username</label>
+                <input type="text" id="profileUsername" value="${AppState.currentUser.username}" required>
+            </div>
+            <div class="form-group">
+                <label for="profileEmail">Email</label>
+                <input type="email" id="profileEmail" value="${AppState.currentUser.email}" required>
+            </div>
+            <div class="form-group">
+                <label for="profileAddress">Address</label>
+                <input type="text" id="profileAddress" value="${AppState.currentUser.address || ''}" required>
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <input type="text" value="${AppState.currentUser.role}" readonly style="text-transform: capitalize; background: var(--bg-secondary); cursor: not-allowed;">
+            </div>
+            <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Save Changes
+                </button>
+                <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
+    `);
 
     showModal(modal);
+}
+
+function handleProfileUpdate(event) {
+    event.preventDefault();
+    
+    const fullName = document.getElementById('profileFullName').value.trim();
+    const username = document.getElementById('profileUsername').value.trim();
+    const email = document.getElementById('profileEmail').value.trim();
+    const address = document.getElementById('profileAddress').value.trim();
+    
+    // Validate inputs
+    if (!fullName || !username || !email || !address) {
+        showToast('All fields are required', 'error');
+        return;
+    }
+    
+    // Check if username is already taken by another user
+    const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const usernameTaken = allUsers.some(u => 
+        u.username === username && u.id !== AppState.currentUser.id
+    );
+    
+    if (usernameTaken) {
+        showToast('Username is already taken', 'error');
+        return;
+    }
+    
+    // Update current user
+    AppState.currentUser.fullName = fullName;
+    AppState.currentUser.username = username;
+    AppState.currentUser.email = email;
+    AppState.currentUser.address = address;
+    
+    // Update in localStorage users array
+    const userIndex = allUsers.findIndex(u => u.id === AppState.currentUser.id);
+    if (userIndex !== -1) {
+        allUsers[userIndex] = AppState.currentUser;
+        localStorage.setItem('users', JSON.stringify(allUsers));
+    }
+    
+    // Update current user session
+    localStorage.setItem('currentUser', JSON.stringify(AppState.currentUser));
+    
+    // Update UI
+    document.getElementById('userName').textContent = fullName;
+    
+    // Close modal and show success
+    closeModal();
+    showToast('Profile updated successfully!', 'success');
 }
 
 // ========================================
@@ -690,6 +750,7 @@ function closeModal() {
 // Make functions globally available
 window.navigateToPage = navigateToPage;
 window.showProfileModal = showProfileModal;
+window.handleProfileUpdate = handleProfileUpdate;
 window.closeModal = closeModal;
 window.showModal = showModal;
 window.createModal = createModal;
