@@ -232,6 +232,7 @@ a:hover {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     transition: transform var(--transition-base);
+    object-fit: cover;
 }
 
 .logo:hover {
@@ -452,6 +453,8 @@ a:hover {
     position: relative;
     border-radius: var(--radius-lg);
     margin: var(--spacing-xs);
+    cursor: pointer;
+    z-index: 10;
 }
 
 .nav-item::before {
@@ -729,9 +732,10 @@ a:hover {
 .form-group label {
     display: block;
     margin-bottom: var(--spacing-sm);
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: white;
+    font-size: 0.875rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .form-group input,
@@ -739,12 +743,12 @@ a:hover {
 .form-group select {
     width: 100%;
     padding: var(--spacing-md);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
     font-size: var(--font-size-base);
     transition: all var(--transition-fast);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+    background: #f8fafc;
+    color: #1e293b;
 }
 
 .form-group input:focus,
@@ -802,9 +806,32 @@ a:hover {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    background: url('../logo/bg.jpg') center/cover no-repeat;
     padding: var(--spacing-lg);
     position: relative;
+    overflow: hidden;
+}
+
+.login-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    pointer-events: none;
+}
+
+@keyframes gradientShift {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
 }
 
 /* Login Install Banner */
@@ -813,11 +840,13 @@ a:hover {
     top: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+    background: linear-gradient(135deg, #dc2626 0%, #2563eb 100%);
     padding: var(--spacing-sm) var(--spacing-md);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     animation: slideDown 0.3s ease-out;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .login-install-content {
@@ -850,14 +879,18 @@ a:hover {
 }
 
 .login-container {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-xl);
-    padding: var(--spacing-2xl);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-radius: 0;
+    padding: 2rem;
     max-width: 400px;
     width: 100%;
-    box-shadow: var(--shadow-xl);
-    animation: fadeInUp var(--transition-slow);
-    border: 1px solid var(--border-color);
+    box-shadow: none;
+    animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+    border: none;
 }
 
 @keyframes fadeInUp {
@@ -878,21 +911,31 @@ a:hover {
 }
 
 .login-logo {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto var(--spacing-md);
+    width: 100px;
+    height: 100px;
+    margin: 0 auto var(--spacing-lg);
     border-radius: var(--radius-lg);
+    object-fit: cover;
+    box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.3);
 }
 
 .login-header h1 {
-    font-size: var(--font-size-2xl);
-    color: var(--text-primary);
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #dc2626 0%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-bottom: var(--spacing-xs);
+    letter-spacing: -0.025em;
 }
 
 .login-header p {
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .login-form {
@@ -901,8 +944,9 @@ a:hover {
 
 .login-footer {
     text-align: center;
-    color: var(--text-secondary);
+    color: white;
     font-size: var(--font-size-sm);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* ========================================
