@@ -843,10 +843,7 @@ function showProfileModal() {
                 <label for="profileAddress">Address</label>
                 <input type="text" id="profileAddress" value="${AppState.currentUser.address || ''}" required>
             </div>
-            <div class="form-group">
-                <label>Role</label>
-                <input type="text" value="${AppState.currentUser.role}" readonly style="text-transform: capitalize; background: var(--bg-secondary); cursor: not-allowed;">
-            </div>
+
             <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
                 <button type="submit" class="btn btn-primary" style="flex: 1;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
