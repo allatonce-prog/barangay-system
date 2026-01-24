@@ -2,49 +2,14 @@
 // AUTHENTICATION MODULE
 // ========================================
 
-// Initialize demo users
-function initializeDemoUsers() {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-
-    // Add default admin if no users exist
-    if (users.length === 0) {
-        const defaultUsers = [
-            {
-                id: 'user-admin',
-                username: 'admin',
-                password: 'admin123', // In production, use proper password hashing
-                fullName: 'Admin User',
-                email: 'admin@barangay.gov',
-                role: 'admin',
-                address: 'Barangay Hall',
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: 'user-resident',
-                username: 'resident',
-                password: 'resident123',
-                fullName: 'Juan Dela Cruz',
-                email: 'juan@example.com',
-                role: 'resident',
-                address: 'Purok 1, Barangay Pantukan',
-                createdAt: new Date().toISOString()
-            }
-        ];
-
-        localStorage.setItem('users', JSON.stringify(defaultUsers));
-    }
-}
-
-// Initialize users on load
-initializeDemoUsers();
-
 // ========================================
 // LOGIN HANDLER
-// ========================================
+// =========================================
 
-document.getElementById('loginForm')?.addEventListener('submit', (e) => {
+document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    document.getElementById('loginUsername').placeholder = 'Enter your email or username';
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
 
@@ -54,29 +19,50 @@ document.getElementById('loginForm')?.addEventListener('submit', (e) => {
         return;
     }
 
-    // Get users from storage
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Logging in...';
+    submitBtn.disabled = true;
 
-    // Find user
-    const user = users.find(u => u.username === username && u.password === password);
+    try {
+        // Use the input directly (could be username or email)
+        const identifier = username;
 
-    if (user) {
-        // Remove password from stored user object
-        const { password, ...userWithoutPassword } = user;
+        console.log('Attempting login with identifier:', identifier);
+        const result = await DB.loginUser(identifier, password);
 
-        // Save current user
-        AppState.currentUser = userWithoutPassword;
-        localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+        if (result.success && result.user) {
+            // Save current user to AppState and localStorage
+            AppState.currentUser = result.user;
+            localStorage.setItem('currentUser', JSON.stringify(result.user));
 
-        // Show success message
-        showToast(`Welcome back, ${user.fullName}!`, 'success');
+            // Show success message
+            showToast(`Welcome back, ${result.user.fullName || 'User'}!`, 'success');
 
-        // Show app
-        setTimeout(() => {
-            showApp();
-        }, 500);
-    } else {
-        showToast('Invalid username or password', 'error');
+            // Show app
+            setTimeout(() => {
+                showApp();
+            }, 500);
+        } else {
+            // Show specific error message for wrong credentials
+            if (result.error.includes('invalid-login-credentials') || result.error.includes('wrong-password')) {
+                showToast('Invalid email or password. Please check your credentials and try again.', 'error');
+            } else if (result.error.includes('user-not-found')) {
+                showToast('User not found. Please register first or check your email.', 'error');
+            } else if (result.error.includes('too-many-requests')) {
+                showToast('Too many failed attempts. Please try again later.', 'error');
+            } else {
+                showToast(result.error || 'Login failed. Please try again.', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast('Login failed. Please try again.', 'error');
+    } finally {
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     }
 });
 
@@ -84,7 +70,7 @@ document.getElementById('loginForm')?.addEventListener('submit', (e) => {
 // REGISTRATION HANDLER
 // ========================================
 
-document.getElementById('registerForm')?.addEventListener('submit', (e) => {
+document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const fullName = document.getElementById('regFullName').value.trim();
@@ -117,47 +103,44 @@ document.getElementById('registerForm')?.addEventListener('submit', (e) => {
         return;
     }
 
-    // Get existing users
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Creating account...';
+    submitBtn.disabled = true;
 
-    // Check if username already exists
-    if (users.some(u => u.username === username)) {
-        showToast('Username already exists', 'error');
-        return;
+    try {
+        // Register user in local database
+        const result = await DB.registerUser({
+            fullName,
+            username,
+            email,
+            address,
+            password
+        });
+
+        if (result.success) {
+            // Show success message
+            showToast('Registration successful! Please login.', 'success');
+
+            // Clear form
+            document.getElementById('registerForm').reset();
+
+            // Switch to login screen
+            setTimeout(() => {
+                showLoginScreen();
+            }, 1500);
+        } else {
+            showToast(result.error || 'Registration failed', 'error');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        showToast('Registration failed. Please try again.', 'error');
+    } finally {
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     }
-
-    // Check if email already exists
-    if (users.some(u => u.email === email)) {
-        showToast('Email already registered', 'error');
-        return;
-    }
-
-    // Create new user
-    const newUser = {
-        id: `user-${Date.now()}`,
-        username,
-        password, // In production, hash this password
-        fullName,
-        email,
-        address,
-        role: 'resident',
-        createdAt: new Date().toISOString()
-    };
-
-    // Add to users array
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-
-    // Show success message
-    showToast('Registration successful! Please login.', 'success');
-
-    // Clear form
-    document.getElementById('registerForm').reset();
-
-    // Switch to login screen
-    setTimeout(() => {
-        showLoginScreen();
-    }, 1500);
 });
 
 // ========================================

@@ -1,217 +1,218 @@
 // ========================================
-// NOTIFICATIONS MODULE
+// NOTIFICATIONS MODULE (FIRESTORE REALTIME)
 // ========================================
 
-// ========================================
-// CREATE NOTIFICATION
-// ========================================
+let unsubscribeNotifications = null;
 
-function createNotification(notification) {
-    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-
-    const newNotification = {
-        id: `notif-${Date.now()}`,
-        userId: notification.userId,
-        title: notification.title,
-        message: notification.message,
-        type: notification.type || 'info', // info, success, warning, error
-        requestId: notification.requestId || null,
-        read: false,
-        createdAt: new Date().toISOString()
-    };
-
-    notifications.unshift(newNotification);
-
-    // Keep only last 50 notifications per user
-    const userNotifications = notifications.filter(n => n.userId === notification.userId);
-    if (userNotifications.length > 50) {
-        const toRemove = userNotifications.slice(50);
-        toRemove.forEach(notif => {
-            const index = notifications.findIndex(n => n.id === notif.id);
-            if (index > -1) {
-                notifications.splice(index, 1);
-            }
-        });
-    }
-
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-
-    // Update badge if notification is for current user
-    if (AppState.currentUser && notification.userId === AppState.currentUser.id) {
-        updateNotificationBadge();
-    }
-}
-
-// ========================================
-// LOAD NOTIFICATIONS
-// ========================================
-
-function loadNotifications() {
+// Start listening to notifications
+function startNotificationListener() {
     if (!AppState.currentUser) return;
 
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    const userNotifications = allNotifications.filter(n => n.userId === AppState.currentUser.id);
+    // Stop existing listener if any
+    stopNotificationListener();
 
-    AppState.notifications = userNotifications;
-    updateNotificationBadge();
+    const userId = AppState.currentUser.id;
+    const isAdmin = AppState.currentUser.role === 'admin';
+
+    // Target IDs: User's own ID + 'role:admin' if they are admin
+    const targetIds = [userId];
+    if (isAdmin) {
+        targetIds.push('role:admin');
+        targetIds.push('user-admin');
+    }
+
+    console.log('[Notifications] Starting listener for:', targetIds);
+
+    const db = firebase.firestore();
+
+    // Subscribe
+    // We removed orderBy('createdAt') to avoid index requirements error. We sort client-side.
+    unsubscribeNotifications = db.collection('NOTIFICATIONS')
+        .where('userId', 'in', targetIds)
+        .limit(50)
+        .onSnapshot((snapshot) => {
+            const notifications = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                // Safety check for date handling
+                createdAt: doc.data().createdAt ?
+                    (doc.data().createdAt.toDate ? doc.data().createdAt.toDate() : new Date(doc.data().createdAt))
+                    : new Date()
+            }));
+
+            // Client-side sort
+            notifications.sort((a, b) => b.createdAt - a.createdAt);
+
+            AppState.notifications = notifications;
+            updateNotificationBadge();
+
+            // If the notifications modal is currently open, refresh it
+            const listContainer = document.getElementById('notificationsListContainer');
+            if (listContainer) {
+                renderNotificationsList(listContainer);
+            }
+
+        }, (error) => {
+            console.error('[Notifications] Listener error:', error);
+        });
 }
 
-// ========================================
-// UPDATE NOTIFICATION BADGE
-// ========================================
+function stopNotificationListener() {
+    if (unsubscribeNotifications) {
+        unsubscribeNotifications();
+        unsubscribeNotifications = null;
+    }
+}
 
 function updateNotificationBadge() {
-    if (!AppState.currentUser) return;
+    if (!AppState.notifications) return;
 
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    const unreadCount = allNotifications.filter(n =>
-        n.userId === AppState.currentUser.id && !n.read
-    ).length;
-
+    const unreadCount = AppState.notifications.filter(n => !n.read).length;
     const badge = document.getElementById('notificationBadge');
+
     if (badge) {
         if (unreadCount > 0) {
             badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
             badge.style.display = 'block';
+
+            // Add pulse effect momentarily
+            badge.style.animation = 'none';
+            badge.offsetHeight; /* trigger reflow */
+            badge.style.animation = 'pulse 2s infinite';
         } else {
             badge.style.display = 'none';
         }
     }
 }
 
-// ========================================
-// SHOW NOTIFICATIONS PANEL
-// ========================================
-
 function showNotifications() {
-    console.log('[Notifications] showNotifications called');
-    console.log('[Notifications] AppState.currentUser:', AppState.currentUser);
-    
-    if (!AppState.currentUser) {
-        console.error('[Notifications] No current user found');
+    if (!AppState.notifications) {
+        startNotificationListener(); // Try to start if not running
         return;
     }
 
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    console.log('[Notifications] All notifications:', allNotifications);
-    const userNotifications = allNotifications.filter(n => n.userId === AppState.currentUser.id);
-    console.log('[Notifications] User notifications:', userNotifications);
-
-    const notificationsList = userNotifications.length === 0
-        ? '<div style="text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);">No notifications</div>'
-        : userNotifications.map(notif => `
-            <div class="notification-item ${notif.read ? 'read' : 'unread'}" 
-                 onclick="handleNotificationClick('${notif.id}')"
-                 style="padding: var(--spacing-md); border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background var(--transition-fast); ${!notif.read ? 'background: rgba(37, 99, 235, 0.05);' : ''}">
-                <div style="display: flex; align-items: start; gap: var(--spacing-md);">
-                    <div style="width: 40px; height: 40px; border-radius: var(--radius-full); background: ${getNotificationColor(notif.type)}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        ${getNotificationIcon(notif.type)}
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-xs);">
-                            <h4 style="margin: 0; font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary);">
-                                ${notif.title}
-                            </h4>
-                            ${!notif.read ? '<div style="width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--primary-color);"></div>' : ''}
-                        </div>
-                        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            ${notif.message}
-                        </p>
-                        <p style="margin: var(--spacing-xs) 0 0 0; font-size: var(--font-size-xs); color: var(--text-light);">
-                            ${formatNotificationTime(notif.createdAt)}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-    console.log('[Notifications] Creating modal...');
-    console.log('[Notifications] createModal function exists:', typeof createModal);
-    console.log('[Notifications] showModal function exists:', typeof showModal);
-    
+    // We render the container first
     const modal = createModal('Notifications', `
-        <div style="max-height: 60vh; overflow-y: auto;">
-            ${notificationsList}
+        <div id="notificationsListContainer" style="max-height: 60vh; overflow-y: auto;">
+            <!-- Content injected via JS -->
         </div>
-        ${userNotifications.filter(n => !n.read).length > 0 ? `
-            <div style="padding: var(--spacing-md); border-top: 1px solid var(--border-color); text-align: center;">
-                <button class="btn btn-sm btn-outline" onclick="markAllAsRead()">Mark all as read</button>
-            </div>
-        ` : ''}
+        <div id="notificationsActions" style="padding: var(--spacing-md); border-top: 1px solid var(--border-color); text-align: center; display: none;">
+            <button class="btn btn-sm btn-outline" onclick="markAllAsRead()">Mark all as read</button>
+        </div>
     `, [
         { text: 'Close', class: 'btn-outline', action: 'close' }
     ]);
 
-    console.log('[Notifications] Modal HTML created:', modal ? 'Yes' : 'No');
     showModal(modal);
-    console.log('[Notifications] showModal called');
+
+    // Now render content
+    const container = document.getElementById('notificationsListContainer');
+    if (container) renderNotificationsList(container);
 }
 
-// ========================================
-// HANDLE NOTIFICATION CLICK
-// ========================================
+function renderNotificationsList(container) {
+    const notifications = AppState.notifications || [];
 
-function handleNotificationClick(notificationId) {
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    const notifIndex = allNotifications.findIndex(n => n.id === notificationId);
+    if (notifications.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);">No notifications</div>';
+        const actions = document.getElementById('notificationsActions');
+        if (actions) actions.style.display = 'none';
+        return;
+    }
 
-    if (notifIndex === -1) return;
+    container.innerHTML = notifications.map(notif => `
+        <div class="notification-item ${notif.read ? 'read' : 'unread'}" 
+             onclick="handleNotificationClick('${notif.id}', '${notif.requestId}')"
+             style="padding: var(--spacing-md); border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background var(--transition-fast); ${!notif.read ? 'background: rgba(37, 99, 235, 0.05);' : ''}">
+            <div style="display: flex; align-items: start; gap: var(--spacing-md);">
+                <div style="width: 40px; height: 40px; border-radius: var(--radius-full); background: ${getNotificationColor(notif.type)}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    ${getNotificationIcon(notif.type)}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-xs);">
+                        <h4 style="margin: 0; font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary);">
+                            ${notif.title}
+                        </h4>
+                        ${!notif.read ? '<div style="width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--primary-color);"></div>' : ''}
+                    </div>
+                    <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${notif.message}
+                    </p>
+                    <p style="margin: var(--spacing-xs) 0 0 0; font-size: var(--font-size-xs); color: var(--text-light);">
+                        ${formatNotificationTime(notif.createdAt)}
+                    </p>
+                </div>
+            </div>
+        </div>
+    `).join('');
 
-    const notification = allNotifications[notifIndex];
+    // Update actions visibility
+    const hasUnread = notifications.some(n => !n.read);
+    const actions = document.getElementById('notificationsActions');
+    if (actions) actions.style.display = hasUnread ? 'block' : 'none';
+}
 
-    // Mark as read
-    notification.read = true;
-    allNotifications[notifIndex] = notification;
-    localStorage.setItem('notifications', JSON.stringify(allNotifications));
+async function handleNotificationClick(notificationId, requestId) {
+    // 1. Mark as read in Firestore
+    try {
+        await DB.updateData('NOTIFICATIONS', notificationId, { read: true });
 
-    // Update badge
-    updateNotificationBadge();
+        // Optimistic update
+        const notif = AppState.notifications.find(n => n.id === notificationId);
+        if (notif) notif.read = true;
+        updateNotificationBadge();
 
-    // Close modal
+        // Refresh list if open
+        const container = document.getElementById('notificationsListContainer');
+        if (container) renderNotificationsList(container);
+
+    } catch (e) {
+        console.error('Error marking read:', e);
+    }
+
     closeModal();
 
-    // Navigate to related request if available
-    if (notification.requestId) {
-        if (AppState.currentUser.role === 'admin') {
+    // 2. Navigate
+    if (requestId && requestId !== 'null' && requestId !== 'undefined') {
+        const isAdmin = AppState.currentUser.role === 'admin';
+
+        if (isAdmin) {
             navigateToPage('admin-requests');
             setTimeout(() => {
-                viewAdminRequestDetails(notification.requestId);
-            }, 300);
+                if (window.viewRequestDetails) window.viewRequestDetails(requestId);
+                else if (window.viewAdminRequestDetails) window.viewAdminRequestDetails(requestId);
+            }, 500);
         } else {
-            navigateToPage('requests');
-            setTimeout(() => {
-                viewRequestDetails(notification.requestId);
-            }, 300);
+            if (window.viewRequestDetails) window.viewRequestDetails(requestId);
         }
     }
 }
 
-// ========================================
-// MARK ALL AS READ
-// ========================================
-
-function markAllAsRead() {
+async function markAllAsRead() {
     if (!AppState.currentUser) return;
 
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+    const unread = AppState.notifications.filter(n => !n.read);
+    const batch = firebase.firestore().batch();
 
-    allNotifications.forEach(notif => {
-        if (notif.userId === AppState.currentUser.id) {
-            notif.read = true;
-        }
+    unread.forEach(n => {
+        const ref = firebase.firestore().collection('NOTIFICATIONS').doc(n.id);
+        batch.update(ref, { read: true });
     });
 
-    localStorage.setItem('notifications', JSON.stringify(allNotifications));
-    updateNotificationBadge();
+    try {
+        await batch.commit();
+        showToast('All marked as read', 'success');
 
-    showToast('All notifications marked as read', 'success');
-    closeModal();
+        // Optimistic
+        AppState.notifications.forEach(n => n.read = true);
+        updateNotificationBadge();
+        closeModal();
+    } catch (e) {
+        showToast('Failed to mark all read', 'error');
+    }
 }
 
-// ========================================
-// UTILITY FUNCTIONS
-// ========================================
-
+// Helpers (Color/Icon/Time)
 function getNotificationColor(type) {
     const colors = {
         'info': 'rgba(37, 99, 235, 0.1)',
@@ -233,8 +234,9 @@ function getNotificationIcon(type) {
 }
 
 function formatNotificationTime(timestamp) {
+    if (!timestamp) return '';
     const now = new Date();
-    const notifTime = new Date(timestamp);
+    const notifTime = timestamp instanceof Date ? timestamp : new Date(timestamp);
     const diffMs = now - notifTime;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
@@ -248,12 +250,10 @@ function formatNotificationTime(timestamp) {
     return notifTime.toLocaleDateString();
 }
 
-// Make functions globally available
-window.createNotification = createNotification;
-window.loadNotifications = loadNotifications;
-window.updateNotificationBadge = updateNotificationBadge;
+// Exports
+window.startNotificationListener = startNotificationListener;
+window.stopNotificationListener = stopNotificationListener;
+window.loadNotifications = startNotificationListener;
 window.showNotifications = showNotifications;
 window.handleNotificationClick = handleNotificationClick;
 window.markAllAsRead = markAllAsRead;
-
-console.log('[Notifications] Module loaded, showNotifications available:', typeof showNotifications);

@@ -2,6 +2,76 @@
 // ADDITIONAL UTILITY FUNCTIONS
 // ========================================
 
+// Convert Firebase Timestamp to JavaScript Date
+function convertFirebaseTimestamp(timestamp) {
+    if (!timestamp) {
+        return new Date(); // Return current date if no timestamp
+    }
+
+    // If it's already a Date object
+    if (timestamp instanceof Date) {
+        return timestamp;
+    }
+
+    // If it's a Firebase Timestamp object
+    if (timestamp && timestamp.toDate && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+    }
+
+    // If it's an object with seconds property (Firestore timestamp format)
+    if (timestamp && timestamp.seconds) {
+        return new Date(timestamp.seconds * 1000);
+    }
+
+    // If it's a string or number, try to parse it
+    try {
+        return new Date(timestamp);
+    } catch (e) {
+        console.error('Error converting timestamp:', e);
+        return new Date();
+    }
+}
+
+// Format date for display
+function formatDate(timestamp) {
+    const date = convertFirebaseTimestamp(timestamp);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+// Format date and time for display
+function formatDateTime(timestamp) {
+    const date = convertFirebaseTimestamp(timestamp);
+    return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Copy text to clipboard
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast('Copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        showToast('Failed to copy', 'error');
+    }
+}
+
+// Make functions globally available
+window.convertFirebaseTimestamp = convertFirebaseTimestamp;
+window.formatDate = formatDate;
+window.formatDateTime = formatDateTime;
+window.copyToClipboard = copyToClipboard;
+
+
 // Emergency SOS Function
 function showEmergencyModal() {
     const modal = createModal('Emergency SOS', `
@@ -58,3 +128,50 @@ function handleEmergencyAlert() {
 // Make functions globally available
 window.showEmergencyModal = showEmergencyModal;
 window.handleEmergencyAlert = handleEmergencyAlert;
+
+// ========================================
+// CLOUDINARY UPLOAD
+// ========================================
+
+const CLOUDINARY_CLOUD_NAME = 'djghkklph';
+const CLOUDINARY_API_KEY = '147819183757931';
+// WARNING: Exposing secret on client is unsafe, but doing so per user request for this local app
+const CLOUDINARY_API_SECRET = '9zwbXpSM1gYCxVWzkNRbC26LkvU';
+
+async function uploadToCloudinary(file) {
+    if (!file) return null;
+
+    try {
+        showToast('Uploading image...', 'info');
+
+        const timestamp = Math.round((new Date()).getTime() / 1000);
+
+        // Generate signature: SHA1(timestamp=xxxx + secret)
+        const strToSign = `timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
+        const signature = CryptoJS.SHA1(strToSign).toString();
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', CLOUDINARY_API_KEY);
+        formData.append('timestamp', timestamp);
+        formData.append('signature', signature);
+
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error?.message || 'Upload failed');
+        }
+
+        return data.secure_url;
+    } catch (error) {
+        console.error('Cloudinary upload error:', error);
+        showToast('Failed to upload image: ' + error.message, 'error');
+        throw error;
+    }
+}
+window.uploadToCloudinary = uploadToCloudinary;

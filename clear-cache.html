@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 FORCE CLEAR - BrgyONE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .warning {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .warning h3 {
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        pre {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .step {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .step h3 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔥 NUCLEAR CACHE CLEAR</h1>
+
+        <div class="warning">
+            <h3>⚠️ Warning</h3>
+            <p>This will completely wipe ALL cached data, service workers, and storage. Use this if admin pages won't
+                load.</p>
+        </div>
+
+        <button onclick="nuclearClear()">🚀 NUCLEAR CLEAR & FIX</button>
+
+        <div class="step">
+            <h3>After clicking the button above:</h3>
+            <ol style="margin-left: 20px; line-height: 1.8;">
+                <li>Wait for "SUCCESS" message</li>
+                <li>Page will reload automatically</li>
+                <li>Login as admin</li>
+                <li>Admin pages should work!</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>If it STILL doesn't work:</h3>
+            <ol style="margin-left: 20px; line-height: 1.8;">
+                <li>Press <code>Ctrl + Shift + Delete</code></li>
+                <li>Select "Cached images and files"</li>
+                <li>Click "Clear data"</li>
+                <li>Press <code>Ctrl + Shift + R</code> (hard refresh)</li>
+            </ol>
+        </div>
+
+        <div id="status" class="status"></div>
+        <pre id="log"></pre>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+
+        function addLog(message) {
+            log.textContent += message + '\n';
+            log.scrollTop = log.scrollHeight;
+            console.log(message);
+        }
+
+        async function nuclearClear() {
+            status.className = 'status show';
+            status.textContent = '🔄 Clearing everything...';
+            log.textContent = '';
+
+            try {
+                addLog('🚀 Starting NUCLEAR cache clear...\n');
+
+                // 1. Unregister ALL service workers
+                addLog('1️⃣ Unregistering service workers...');
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    addLog(`   Found ${registrations.length} service worker(s)`);
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        addLog('   ✅ Unregistered service worker');
+                    }
+                }
+
+                // 2. Delete ALL caches
+                addLog('\n2️⃣ Deleting ALL caches...');
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    addLog(`   Found ${cacheNames.length} cache(s)`);
+                    for (let cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        addLog(`   ✅ Deleted: ${cacheName}`);
+                    }
+                }
+
+                // 3. Clear localStorage
+                addLog('\n3️⃣ Clearing localStorage...');
+                const localStorageCount = localStorage.length;
+                addLog(`   Found ${localStorageCount} item(s)`);
+                localStorage.clear();
+                addLog('   ✅ localStorage cleared');
+
+                // 4. Clear sessionStorage
+                addLog('\n4️⃣ Clearing sessionStorage...');
+                const sessionStorageCount = sessionStorage.length;
+                addLog(`   Found ${sessionStorageCount} item(s)`);
+                sessionStorage.clear();
+                addLog('   ✅ sessionStorage cleared');
+
+                // 5. Clear IndexedDB
+                addLog('\n5️⃣ Deleting IndexedDB...');
+                if ('indexedDB' in window) {
+                    try {
+                        const dbs = await indexedDB.databases();
+                        addLog(`   Found ${dbs.length} database(s)`);
+                        for (let db of dbs) {
+                            indexedDB.deleteDatabase(db.name);
+                            addLog(`   ✅ Deleted: ${db.name}`);
+                        }
+                    } catch (e) {
+                        addLog('   ⚠️ Could not list DBs (this is ok)');
+                        // Try to delete the known database
+                        indexedDB.deleteDatabase('BrgyONEDB');
+                        addLog('   ✅ Deleted: BrgyONEDB');
+                    }
+                }
+
+                addLog('\n✅✅✅ NUCLEAR CLEAR COMPLETE! ✅✅✅');
+                addLog('🔄 Reloading in 2 seconds...\n');
+
+                status.className = 'status show success';
+                status.textContent = '✅ SUCCESS! Reloading...';
+
+                // Force reload with cache bypass
+                setTimeout(() => {
+                    window.location.href = 'index.html?nocache=' + Date.now();
+                }, 2000);
+
+            } catch (error) {
+                addLog('\n❌ Error: ' + error.message);
+                status.className = 'status show error';
+                status.textContent = '❌ Error: ' + error.message;
+            }
+        }
+
+        // Show instructions
+        addLog('📋 Ready to clear cache\n');
+        addLog('Click the button above to start\n');
+    </script>
+</body>
+
+</html>

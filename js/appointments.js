@@ -5,7 +5,7 @@
 // Available appointment types
 const APPOINTMENT_TYPES = [
     'Document Consultation',
-    'Business Permit Application',
+    'Cedula Application',
     'Complaint Filing',
     'General Inquiry',
     'Certificate Pickup',

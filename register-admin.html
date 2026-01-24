@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BrgyONE Admin Registration - Secure admin account creation">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="robots" content="noindex, nofollow">
+
+    <title>Admin Registration - BrgyONE</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/modern-enhancements.css">
+
+    <style>
+        .admin-register-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: var(--spacing-lg);
+        }
+
+        .admin-register-container {
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-2xl);
+            padding: var(--spacing-2xl);
+            max-width: 500px;
+            width: 100%;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .admin-register-header {
+            text-align: center;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .admin-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .admin-register-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-lg);
+            margin: 0 auto var(--spacing-md);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .admin-register-header h1 {
+            font-size: var(--font-size-2xl);
+            margin: 0 0 var(--spacing-xs) 0;
+            color: var(--text-primary);
+        }
+
+        .admin-register-header p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .security-notice {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .security-notice-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .security-notice-header svg {
+            color: var(--danger-color);
+        }
+
+        .security-notice h3 {
+            margin: 0;
+            font-size: var(--font-size-md);
+            color: var(--danger-color);
+        }
+
+        .security-notice p {
+            margin: 0;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .admin-form {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .password-strength {
+            margin-top: var(--spacing-xs);
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            transition: all 0.3s ease;
+            border-radius: var(--radius-full);
+        }
+
+        .strength-weak {
+            width: 33%;
+            background: var(--danger-color);
+        }
+
+        .strength-medium {
+            width: 66%;
+            background: var(--warning-color);
+        }
+
+        .strength-strong {
+            width: 100%;
+            background: var(--success-color);
+        }
+
+        .password-requirements {
+            margin-top: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .requirement:last-child {
+            margin-bottom: 0;
+        }
+
+        .requirement svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .requirement.met {
+            color: var(--success-color);
+        }
+
+        .requirement.unmet {
+            color: var(--text-secondary);
+        }
+
+        .admin-footer {
+            text-align: center;
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .admin-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .admin-footer a:hover {
+            text-decoration: underline;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-register-screen">
+        <div class="admin-register-container">
+            <div class="admin-register-header">
+                <span class="admin-badge">🛡️ Administrator</span>
+                <img src="logo/logo.jpg" alt="BrgyONE Logo" class="admin-register-logo">
+                <h1>Admin Registration</h1>
+                <p>Create a secure administrator account</p>
+            </div>
+
+            <div class="security-notice">
+                <div class="security-notice-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <h3>Security Notice</h3>
+                </div>
+                <p>This page is for authorized personnel only. Admin accounts have full system access. Use a strong,
+                    unique password and keep credentials secure.</p>
+            </div>
+
+            <form id="adminRegisterForm" class="admin-form">
+                <div class="form-group">
+                    <label for="adminFullName">Full Name *</label>
+                    <input type="text" id="adminFullName" required placeholder="Your full name">
+                </div>
+
+                <div class="form-group">
+                    <label for="adminUsername">Username *</label>
+                    <input type="text" id="adminUsername" required placeholder="Choose a username" minlength="4">
+                    <small style="color: var(--text-secondary); font-size: var(--font-size-xs);">Minimum 4
+                        characters</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="adminEmail">Email Address *</label>
+                    <input type="email" id="adminEmail" required placeholder="admin@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="adminAddress">Office Location</label>
+                    <input type="text" id="adminAddress" placeholder="Barangay Office" value="Barangay Office">
+                </div>
+
+                <div class="form-group">
+                    <label for="adminPassword">Password *</label>
+                    <input type="password" id="adminPassword" required placeholder="Create a strong password"
+                        minlength="8">
+                    <div class="password-strength">
+                        <div id="passwordStrengthBar" class="password-strength-bar"></div>
+                    </div>
+                    <div class="password-requirements">
+                        <div class="requirement unmet" id="req-length">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                            <span>At least 8 characters</span>
+                        </div>
+                        <div class="requirement unmet" id="req-uppercase">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                            <span>One uppercase letter</span>
+                        </div>
+                        <div class="requirement unmet" id="req-number">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                            <span>One number</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="adminConfirmPassword">Confirm Password *</label>
+                    <input type="password" id="adminConfirmPassword" required placeholder="Confirm your password">
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer;">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <span style="font-size: var(--font-size-sm);">I understand the responsibilities of an admin
+                            account</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Create Admin Account
+                </button>
+            </form>
+
+            <div class="admin-footer">
+                <p>Already have an account? <a href="index.html">Login here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <!-- Scripts -->
+    <script src="js/version.js"></script>
+    <script src="js/firebase-db.js"></script>
+    <script src="js/register-admin.js"></script>
+</body>
+
+</html>

@@ -229,7 +229,7 @@ a:hover {
 .logo {
     width: 48px;
     height: 48px;
-    border-radius: var(--radius-lg);
+    border-radius: 50%;
     box-shadow: var(--shadow-md);
     transition: transform var(--transition-base);
     object-fit: cover;
@@ -826,9 +826,12 @@ a:hover {
 }
 
 @keyframes gradientShift {
-    0%, 100% {
+
+    0%,
+    100% {
         background-position: 0% 50%;
     }
+
     50% {
         background-position: 100% 50%;
     }
@@ -872,6 +875,7 @@ a:hover {
         transform: translateY(-100%);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -907,16 +911,23 @@ a:hover {
 
 .login-header {
     text-align: center;
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-sm);
 }
 
 .login-logo {
     width: 100px;
     height: 100px;
-    margin: 0 auto var(--spacing-lg);
-    border-radius: var(--radius-lg);
+    margin: 0 auto var(--spacing-xs);
+    border-radius: 50%;
     object-fit: cover;
     box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.3);
+}
+
+.login-brand-img {
+    max-width: 250px;
+    height: auto;
+    display: block;
+    margin: 0 auto var(--spacing-sm);
 }
 
 .login-header h1 {
@@ -1390,6 +1401,7 @@ tr:hover {
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1471,13 +1483,13 @@ tr:hover {
         left: var(--spacing-sm);
         right: var(--spacing-sm);
     }
-    
+
     .install-prompt-content {
         flex-direction: column;
         text-align: center;
         padding: var(--spacing-xl) var(--spacing-lg);
     }
-    
+
     .install-prompt-btn {
         width: 100%;
     }

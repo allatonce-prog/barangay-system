@@ -7,9 +7,8 @@ const DOCUMENT_TYPES = [
     'Barangay Clearance',
     'Certificate of Residency',
     'Certificate of Indigency',
-    'Business Permit',
+    'Cedula',
     'Barangay ID',
-    'Certificate of Good Moral',
     'Complaint Certificate',
     'Other'
 ];
@@ -118,7 +117,7 @@ function formatFileSize(bytes) {
 // SUBMIT NEW REQUEST
 // ========================================
 
-function handleNewRequest(event) {
+async function handleNewRequest(event) {
     event.preventDefault();
 
     const documentType = document.getElementById('documentType').value;
@@ -132,75 +131,76 @@ function handleNewRequest(event) {
         return;
     }
 
-    // Create request object
-    const request = {
-        id: `req-${Date.now()}`,
-        trackingNumber: generateTrackingNumber(),
-        userId: AppState.currentUser.id,
-        userName: AppState.currentUser.fullName,
-        documentType,
-        purpose,
-        quantity,
-        additionalInfo,
-        status: 'pending',
-        files: selectedFiles.map(f => f.name), // In production, upload files to server
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        timeline: [
-            {
-                status: 'pending',
-                message: 'Request submitted',
-                timestamp: new Date().toISOString()
+    try {
+        // Generate tracking number (async function)
+        const trackingNumber = await generateTrackingNumber();
+
+        // Create request object
+        const request = {
+            trackingNumber: trackingNumber,
+            userId: AppState.currentUser.id,
+            userName: AppState.currentUser.fullName,
+            documentType,
+            purpose,
+            quantity,
+            additionalInfo,
+            files: selectedFiles.map(f => f.name), // In production, upload files to server
+            timeline: [
+                {
+                    status: 'pending',
+                    message: 'Request submitted',
+                    timestamp: new Date().toISOString()
+                }
+            ]
+        };
+
+        // Save to local database
+        const result = await DB.createRequest(request);
+
+        if (result.success) {
+            request.id = result.id;
+
+            // Create notification for admin
+            await DB.createNotification({
+                userId: 'user-admin', // In production, get actual admin ID
+                title: 'New Document Request',
+                message: `${AppState.currentUser.fullName} requested ${documentType}`,
+                type: 'info',
+                requestId: request.id
+            });
+
+            // Show success message
+            showToast('Request submitted successfully!', 'success');
+
+            // Reset form before closing modal
+            const form = document.getElementById('newRequestForm');
+            if (form) {
+                form.reset();
+                selectedFiles = [];
             }
-        ]
-    };
 
-    // Save to localStorage
-    const requests = JSON.parse(localStorage.getItem('requests') || '[]');
-    requests.push(request);
-    localStorage.setItem('requests', JSON.stringify(requests));
+            // Close modal
+            closeModal();
 
-    // Create notification for admin
-    createNotification({
-        userId: 'user-admin',
-        title: 'New Document Request',
-        message: `${AppState.currentUser.fullName} requested ${documentType}`,
-        type: 'info',
-        requestId: request.id
-    });
-
-    // Create notification for user
-    createNotification({
-        userId: AppState.currentUser.id,
-        title: 'Request Submitted',
-        message: `Your request for ${documentType} has been submitted. Tracking #: ${request.trackingNumber}`,
-        type: 'success',
-        requestId: request.id
-    });
-
-    // Show success message
-    showToast(`Request submitted successfully! Tracking #: ${request.trackingNumber}`, 'success');
-
-    // Close modal
-    closeModal();
-
-    // Reset selected files
-    selectedFiles = [];
-
-    // Refresh current page
-    navigateToPage(AppState.currentPage);
-
-    // Update notification badge
-    updateNotificationBadge();
+            // Navigate to requests page to see the new request
+            navigateToPage('requests');
+        } else {
+            showToast(result.error || 'Failed to submit request', 'error');
+        }
+    } catch (error) {
+        console.error('Submit request error:', error);
+        showToast('Failed to submit request', 'error');
+    }
 }
 
 // ========================================
 // TRACKING NUMBER GENERATOR
 // ========================================
 
-function generateTrackingNumber() {
+async function generateTrackingNumber() {
     const year = new Date().getFullYear();
-    const requests = JSON.parse(localStorage.getItem('requests') || '[]');
+    const result = await DB.getAllData('REQUESTS');
+    const requests = result.success ? result.data : [];
     const count = requests.length + 1;
     return `REQ-${year}-${String(count).padStart(4, '0')}`;
 }
@@ -209,92 +209,110 @@ function generateTrackingNumber() {
 // VIEW REQUEST DETAILS
 // ========================================
 
-function viewRequestDetails(requestId) {
-    const requests = JSON.parse(localStorage.getItem('requests') || '[]');
-    const request = requests.find(r => r.id === requestId);
+async function viewRequestDetails(requestId) {
+    try {
+        // Get request from database
+        const result = await DB.getData('REQUESTS', requestId);
 
-    if (!request) {
-        showToast('Request not found', 'error');
-        return;
-    }
+        if (!result.success) {
+            showToast('Request not found', 'error');
+            return;
+        }
 
-    const modal = createModal('Request Details', `
-        <div style="margin-bottom: var(--spacing-lg);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
-                <div>
-                    <h4 style="margin: 0; color: var(--text-primary);">${request.documentType}</h4>
-                    <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
-                        Tracking #: ${request.trackingNumber}
-                    </p>
-                </div>
-                <span class="badge badge-${request.status}">${request.status}</span>
-            </div>
-        </div>
-        
-        <div style="background: var(--bg-secondary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
-            <div style="margin-bottom: var(--spacing-sm);">
-                <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Purpose:</strong>
-                <p style="margin: var(--spacing-xs) 0 0 0;">${request.purpose}</p>
-            </div>
-            
-            <div style="margin-bottom: var(--spacing-sm);">
-                <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Quantity:</strong>
-                <p style="margin: var(--spacing-xs) 0 0 0;">${request.quantity}</p>
-            </div>
-            
-            ${request.additionalInfo ? `
-                <div style="margin-bottom: var(--spacing-sm);">
-                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Additional Info:</strong>
-                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.additionalInfo}</p>
-                </div>
-            ` : ''}
-            
-            <div style="margin-bottom: var(--spacing-sm);">
-                <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Submitted:</strong>
-                <p style="margin: var(--spacing-xs) 0 0 0;">${new Date(request.createdAt).toLocaleString()}</p>
-            </div>
-            
-            ${request.files && request.files.length > 0 ? `
-                <div>
-                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Attached Files:</strong>
-                    <ul style="margin: var(--spacing-xs) 0 0 0; padding-left: var(--spacing-lg);">
-                        ${request.files.map(file => `<li>${file}</li>`).join('')}
-                    </ul>
-                </div>
-            ` : ''}
-        </div>
-        
-        <div>
-            <h4 style="margin-bottom: var(--spacing-md);">Timeline</h4>
-            <div class="timeline">
-                ${request.timeline.map((item, index) => `
-                    <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
-                        <div style="width: 40px; height: 40px; border-radius: var(--radius-full); background: ${index === 0 ? 'var(--primary-color)' : 'var(--bg-tertiary)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${index === 0 ? 'white' : 'var(--text-secondary)'}" stroke-width="2">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                        </div>
-                        <div style="flex: 1;">
-                            <p style="margin: 0; font-weight: 600; text-transform: capitalize;">${item.status}</p>
-                            <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">${item.message}</p>
-                            <p style="margin: 0; font-size: var(--font-size-xs); color: var(--text-light);">${new Date(item.timestamp).toLocaleString()}</p>
+        const request = result.data;
+
+        const modal = createModal('Request Details', `
+            <div style="margin-bottom: var(--spacing-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
+                    <div>
+                        <h4 style="margin: 0; color: var(--text-primary); margin-bottom: var(--spacing-xs);">${request.documentType}</h4>
+                        <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+                            <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">Tracking #:</p>
+                            <code style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: var(--radius-sm); font-size: var(--font-size-sm); color: var(--primary-color); cursor: pointer;" 
+                                  onclick="copyToClipboard('${request.trackingNumber}')" 
+                                  title="Click to copy">
+                                ${request.trackingNumber}
+                            </code>
+                            <button onclick="copyToClipboard('${request.trackingNumber}')" class="btn-icon" style="padding: 4px; width: 24px; height: 24px; min-width: 24px;" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                `).join('')}
+                    <span class="badge badge-${request.status}">${request.status}</span>
+                </div>
             </div>
-        </div>
-    `, [
-        { text: 'Close', class: 'btn-outline', action: 'close' }
-    ]);
+            
+            <div style="background: var(--bg-secondary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
+                <div style="margin-bottom: var(--spacing-sm);">
+                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Purpose:</strong>
+                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.purpose}</p>
+                </div>
+                
+                <div style="margin-bottom: var(--spacing-sm);">
+                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Quantity:</strong>
+                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.quantity}</p>
+                </div>
+                
+                ${request.additionalInfo ? `
+                    <div style="margin-bottom: var(--spacing-sm);">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Additional Info:</strong>
+                        <p style="margin: var(--spacing-xs) 0 0 0;">${request.additionalInfo}</p>
+                    </div>
+                ` : ''}
+                
+                <div style="margin-bottom: var(--spacing-sm);">
+                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Submitted:</strong>
+                    <p style="margin: var(--spacing-xs) 0 0 0;">${formatDateTime(request.createdAt)}</p>
+                </div>
+                
+                ${request.files && request.files.length > 0 ? `
+                    <div>
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Attached Files:</strong>
+                        <ul style="margin: var(--spacing-xs) 0 0 0; padding-left: var(--spacing-lg);">
+                            ${request.files.map(file => `<li>${file}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div>
+                <h4 style="margin-bottom: var(--spacing-md);">Timeline</h4>
+                <div class="timeline">
+                    ${request.timeline.map((item, index) => `
+                        <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                            <div style="width: 40px; height: 40px; border-radius: var(--radius-full); background: ${index === 0 ? 'var(--primary-color)' : 'var(--bg-tertiary)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${index === 0 ? 'white' : 'var(--text-secondary)'}" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-weight: 600; text-transform: capitalize;">${item.status}</p>
+                                <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">${item.message}</p>
+                                <p style="margin: 0; font-size: var(--font-size-xs); color: var(--text-light);">${new Date(item.timestamp).toLocaleString()}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `, [
+            { text: 'Close', class: 'btn-outline', action: 'close' }
+        ]);
 
-    showModal(modal);
+        showModal(modal);
+    } catch (error) {
+        console.error('Error viewing request details:', error);
+        showToast('Failed to load request details', 'error');
+    }
 }
 
 // ========================================
 // TRACK REQUEST HANDLER
 // ========================================
 
-function handleTrackRequest(event) {
+async function handleTrackRequest(event) {
     event.preventDefault();
 
     const trackingNumber = document.getElementById('trackingNumber').value.trim().toUpperCase();
@@ -304,10 +322,19 @@ function handleTrackRequest(event) {
         return;
     }
 
-    const requests = JSON.parse(localStorage.getItem('requests') || '[]');
-    const request = requests.find(r => r.trackingNumber === trackingNumber);
-
+    // Show loading state
     const resultContainer = document.getElementById('trackingResult');
+    resultContainer.innerHTML = `
+        <div style="text-align: center; padding: var(--spacing-xl);">
+            <div class="spinner" style="margin: 0 auto;"></div>
+            <p style="margin-top: var(--spacing-md); color: var(--text-secondary);">Searching...</p>
+        </div>
+    `;
+
+    // Query database
+    const result = await DB.getAllData('REQUESTS');
+    const requests = result.success ? result.data : [];
+    const request = requests.find(r => r.trackingNumber === trackingNumber);
 
     if (!request) {
         resultContainer.innerHTML = `
@@ -338,7 +365,7 @@ function handleTrackRequest(event) {
                     <strong>Submitted by:</strong> ${request.userName}
                 </div>
                 <div style="margin-bottom: var(--spacing-md);">
-                    <strong>Date:</strong> ${new Date(request.createdAt).toLocaleString()}
+                    <strong>Date:</strong> ${formatDateTime(request.createdAt)}
                 </div>
                 <button class="btn btn-primary" onclick="viewRequestDetails('${request.id}')">View Full Details</button>
             </div>

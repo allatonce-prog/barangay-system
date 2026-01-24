@@ -15,9 +15,8 @@ const DOCUMENT_FEES = {
     'Barangay Clearance': 50,
     'Certificate of Residency': 30,
     'Certificate of Indigency': 0, // Free
-    'Business Permit': 500,
+    'Cedula': 50,
     'Barangay ID': 100,
-    'Certificate of Good Moral': 30,
     'Complaint Certificate': 50,
     'Other': 50
 };

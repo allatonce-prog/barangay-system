@@ -23,17 +23,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1500);
 });
 
-function initializeApp() {
+async function initializeApp() {
     // Hide loading screen
     document.getElementById('loadingScreen').style.display = 'none';
 
-    // Check if user is logged in
-    const savedUser = localStorage.getItem('currentUser');
+    // Check if user is logged in with local storage
+    try {
+        // Check localStorage for saved session
+        const savedUser = localStorage.getItem('currentUser');
+        const user = savedUser ? JSON.parse(savedUser) : null;
 
-    if (savedUser) {
-        AppState.currentUser = JSON.parse(savedUser);
-        showApp();
-    } else {
+        if (user) {
+            AppState.currentUser = user;
+            showApp();
+        } else {
+            showLoginScreen();
+        }
+    } catch (error) {
+        console.error('Error checking user session:', error);
         showLoginScreen();
     }
 
@@ -103,13 +110,144 @@ function setupEventListeners() {
             }
         });
     }
+
+    // New request button - setup dynamically
+    setTimeout(() => {
+        setupNewRequestButtons();
+    }, 100);
+}
+
+// ========================================
+// NEW REQUEST BUTTON SETUP
+// ========================================
+
+function setupNewRequestButtons() {
+    const newRequestBtns = document.querySelectorAll('#newRequestBtn');
+    newRequestBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Try multiple approaches to find the function
+            if (typeof showNewRequestModal === 'function') {
+                showNewRequestModal();
+            } else if (window.showNewRequestModal && typeof window.showNewRequestModal === 'function') {
+                window.showNewRequestModal();
+            } else {
+                // Use our simple modal
+                showSimpleRequestModal();
+            }
+        });
+    });
+}
+
+// ========================================
+// SIMPLE REQUEST MODAL
+// ========================================
+
+function showSimpleRequestModal() {
+    const modal = createModal('New Document Request', `
+        <form id="simpleRequestForm" onsubmit="handleSimpleRequest(event)">
+            <div class="form-group">
+                <label for="documentType">Document Type *</label>
+                <select id="documentType" required>
+                    <option value="">Select document type</option>
+                    <option value="Barangay Clearance">Barangay Clearance</option>
+                    <option value="Certificate of Residency">Certificate of Residency</option>
+                    <option value="Certificate of Indigency">Certificate of Indigency</option>
+                    <option value="Cedula">Cedula</option>
+                    <option value="Barangay ID">Barangay ID</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="purpose">Purpose *</label>
+                <textarea id="purpose" placeholder="Enter the purpose of your request" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="quantity">Quantity</label>
+                <input type="number" id="quantity" value="1" min="1" max="10" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="additionalInfo">Additional Information</label>
+                <textarea id="additionalInfo" placeholder="Any additional details or special requests"></textarea>
+            </div>
+            
+            <div class="modal-footer" style="border: none; padding: var(--spacing-lg) 0 0 0;">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+        </form>
+    `, []);
+
+    showModal(modal);
+}
+
+async function handleSimpleRequest(event) {
+    event.preventDefault();
+
+    const documentType = document.getElementById('documentType').value;
+    const purpose = document.getElementById('purpose').value.trim();
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const additionalInfo = document.getElementById('additionalInfo').value.trim();
+
+    // Validate
+    if (!documentType || !purpose) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+    }
+
+    // Show loading
+    showToast('Submitting request...', 'info');
+
+    try {
+        // Create request object
+        const requestData = {
+            trackingNumber: `REQ-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+            userId: AppState.currentUser.uid,
+            userName: AppState.currentUser.fullName,
+            documentType,
+            purpose,
+            quantity,
+            additionalInfo,
+            files: [],
+            timeline: [
+                {
+                    status: 'pending',
+                    message: 'Request submitted',
+                    timestamp: new Date().toISOString()
+                }
+            ]
+        };
+
+        // Save to local database
+        const result = await DB.createRequest(requestData);
+
+        if (result.success) {
+            showToast('Request submitted successfully!', 'success');
+            closeModal();
+
+            // Refresh requests list if on requests page
+            if (AppState.currentPage === 'requests') {
+                displayUserRequests();
+            }
+        } else {
+            throw new Error(result.error || 'Failed to save request');
+        }
+    } catch (error) {
+        console.error('Request submission failed:', error);
+        showToast('Failed to submit request: ' + error.message, 'error');
+    }
+
+    // Reset form
+    document.getElementById('simpleRequestForm').reset();
 }
 
 // ========================================
 // NAVIGATION
 // ========================================
 
-function navigateToPage(page) {
+async function navigateToPage(page) {
     console.log('Navigating to:', page);
 
     // Update active nav item
@@ -124,19 +262,19 @@ function navigateToPage(page) {
     AppState.currentPage = page;
 
     // Load page content
-    loadPageContent(page);
+    await loadPageContent(page);
 }
 
-function loadPageContent(page) {
+async function loadPageContent(page) {
     const mainContent = document.querySelector('.main-content');
 
     // Route to appropriate page handler
     switch (page) {
         case 'home':
-            loadHomePage(mainContent);
+            await loadHomePage(mainContent);
             break;
         case 'requests':
-            loadRequestsPage(mainContent);
+            await loadRequestsPage(mainContent);
             break;
         case 'track':
             loadTrackPage(mainContent);
@@ -176,8 +314,17 @@ function loadPageContent(page) {
             if (typeof loadAdminDashboard === 'function') {
                 loadAdminDashboard(mainContent);
             } else {
+                // Try again after a short delay (script might still be loading)
+                console.warn('loadAdminDashboard not ready, retrying...');
                 mainContent.innerHTML = '<div class="card"><p>Loading admin dashboard...</p></div>';
-                console.error('loadAdminDashboard function not found');
+                setTimeout(() => {
+                    if (typeof loadAdminDashboard === 'function') {
+                        loadAdminDashboard(mainContent);
+                    } else {
+                        console.error('loadAdminDashboard function not found after retry');
+                        mainContent.innerHTML = '<div class="card"><p style="color: var(--danger-color);">Error: Admin module not loaded. Please refresh the page.</p></div>';
+                    }
+                }, 500);
             }
             break;
         case 'admin-requests':
@@ -196,8 +343,16 @@ function loadPageContent(page) {
                 console.error('loadAdminReports function not found');
             }
             break;
+        case 'admin-announcements':
+            if (typeof loadAdminAnnouncementsPage === 'function') {
+                loadAdminAnnouncementsPage(mainContent);
+            } else {
+                mainContent.innerHTML = '<div class="card"><p>Loading admin announcements...</p></div>';
+                console.error('loadAdminAnnouncementsPage function not found');
+            }
+            break;
         default:
-            loadHomePage(mainContent);
+            await loadHomePage(mainContent);
     }
 }
 
@@ -269,7 +424,7 @@ function loadMorePage(container) {
 // PAGE LOADERS - RESIDENT MODULE
 // ========================================
 
-function loadHomePage(container) {
+async function loadHomePage(container) {
     container.innerHTML = `
         <div class="page-header">
             <h2>Welcome, ${AppState.currentUser.fullName}!</h2>
@@ -322,7 +477,7 @@ function loadHomePage(container) {
             </div>
             <div class="card-body">
                 <div class="quick-actions">
-                    <button class="btn btn-primary btn-block" onclick="showNewRequestModal()">
+                    <button class="btn btn-primary btn-block" id="newRequestBtn">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -344,17 +499,22 @@ function loadHomePage(container) {
     `;
 
     // Load user statistics
-    updateUserStats();
-    loadRecentRequests();
+    await updateUserStats();
+    await loadRecentRequests();
+
+    // Setup new request button
+    setTimeout(() => {
+        setupNewRequestButtons();
+    }, 100);
 }
 
-function loadRequestsPage(container) {
+async function loadRequestsPage(container) {
     console.log('[App] Loading requests page...');
-    
+
     container.innerHTML = `
         <div class="page-header">
             <h2>My Requests</h2>
-            <button class="btn btn-primary" onclick="showNewRequestModal()">
+            <button class="btn btn-primary" id="newRequestBtn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -370,55 +530,69 @@ function loadRequestsPage(container) {
         </div>
     `;
 
-    displayUserRequests();
+    await displayUserRequests();
+
+    // Setup new request button
+    setTimeout(() => {
+        setupNewRequestButtons();
+    }, 100);
 }
 
-function displayUserRequests() {
+async function displayUserRequests() {
     console.log('[App] Displaying user requests...');
     const requestsList = document.getElementById('requestsList');
-    
+
     if (!requestsList) {
         console.error('[App] requestsList element not found');
         return;
     }
-    
-    const userRequests = getUserRequests();
-    console.log('[App] User requests:', userRequests);
 
-    if (userRequests.length === 0) {
+    try {
+        const userRequests = await getUserRequests();
+        console.log('[App] User requests:', userRequests);
+
+        if (userRequests.length === 0) {
+            requestsList.innerHTML = `
+                <div style="text-align: center; padding: var(--spacing-2xl); color: var(--text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: var(--spacing-md); opacity: 0.3;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <p>No requests yet. Click "New Request" to get started!</p>
+                </div>
+            `;
+            return;
+        }
+
+        const requestsHTML = userRequests.map(request => `
+            <div class="request-item" style="padding: var(--spacing-md); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); cursor: pointer; transition: all var(--transition-fast);" 
+                 onclick="viewRequestDetails('${request.id}')"
+                 onmouseover="this.style.borderColor='var(--primary-color)'; this.style.boxShadow='var(--shadow-md)'"
+                 onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
+                    <div>
+                        <h4 style="margin: 0; color: var(--text-primary);">${request.documentType}</h4>
+                        <p style="margin: var(--spacing-xs) 0 0 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
+                            Tracking: ${request.trackingNumber}
+                        </p>
+                    </div>
+                    <span class="badge badge-${request.status}">${request.status}</span>
+                </div>
+                <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    Submitted: ${formatDate(request.createdAt)}
+                </p>
+            </div>
+        `).join('');
+
+        requestsList.innerHTML = requestsHTML;
+    } catch (error) {
+        console.error('[App] Error displaying user requests:', error);
         requestsList.innerHTML = `
-            <div style="text-align: center; padding: var(--spacing-2xl); color: var(--text-secondary);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: var(--spacing-md); opacity: 0.3;">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <p>No requests yet. Click "New Request" to get started!</p>
+            <div style="text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);">
+                <p>Error loading requests. Please try again.</p>
             </div>
         `;
-        return;
     }
-
-    const requestsHTML = userRequests.map(request => `
-        <div class="request-item" style="padding: var(--spacing-md); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); cursor: pointer; transition: all var(--transition-fast);" 
-             onclick="viewRequestDetails('${request.id}')"
-             onmouseover="this.style.borderColor='var(--primary-color)'; this.style.boxShadow='var(--shadow-md)'"
-             onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
-                <div>
-                    <h4 style="margin: 0; color: var(--text-primary);">${request.documentType}</h4>
-                    <p style="margin: var(--spacing-xs) 0 0 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
-                        Tracking: ${request.trackingNumber}
-                    </p>
-                </div>
-                <span class="badge badge-${request.status}">${request.status}</span>
-            </div>
-            <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
-                Submitted: ${new Date(request.createdAt).toLocaleDateString()}
-            </p>
-        </div>
-    `).join('');
-
-    requestsList.innerHTML = requestsHTML;
 }
 
 function loadTrackPage(container) {
@@ -457,6 +631,13 @@ function showApp() {
     document.getElementById('userName').textContent = AppState.currentUser.fullName;
     document.getElementById('userRole').textContent = AppState.currentUser.role;
 
+    // Update Avatar
+    const profileImage = AppState.currentUser.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(AppState.currentUser.fullName)}&background=random`;
+    const avatars = document.querySelectorAll('.user-avatar, .user-avatar-large');
+    avatars.forEach(container => {
+        container.innerHTML = `<img src="${profileImage}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+    });
+
     // Show appropriate navigation
     if (AppState.currentUser.role === 'admin') {
         document.getElementById('residentNav').style.display = 'none';
@@ -478,11 +659,27 @@ function showLoginScreen() {
     document.getElementById('app').style.display = 'none';
 }
 
-function handleLogout() {
-    AppState.currentUser = null;
-    localStorage.removeItem('currentUser');
-    showToast('Logged out successfully', 'success');
-    showLoginScreen();
+async function handleLogout() {
+    try {
+        // Clear local storage
+        // Clear local storage
+        localStorage.removeItem('currentUser');
+        AppState.currentUser = null;
+
+        // Stop realtime listener
+        if (window.stopNotificationListener) window.stopNotificationListener();
+        const result = { success: true };
+
+        if (result.success) {
+            showToast('Logged out successfully', 'success');
+            showLoginScreen();
+        } else {
+            showToast('Logout failed', 'error');
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        showToast('Logout failed', 'error');
+    }
 }
 
 function showToast(message, type = 'info') {
@@ -495,8 +692,8 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-function updateUserStats() {
-    const userRequests = getUserRequests();
+async function updateUserStats() {
+    const userRequests = await getUserRequests();
 
     document.getElementById('totalRequests').textContent = userRequests.length;
     document.getElementById('pendingRequests').textContent =
@@ -505,21 +702,27 @@ function updateUserStats() {
         userRequests.filter(r => r.status === 'completed').length;
 }
 
-function getUserRequests() {
-    const allRequests = JSON.parse(localStorage.getItem('requests') || '[]');
-    return allRequests.filter(r => r.userId === AppState.currentUser.id);
+async function getUserRequests() {
+    try {
+        const result = await DB.getUserRequests(AppState.currentUser.id);
+        return result.success ? result.data : [];
+    } catch (error) {
+        console.error('Error getting user requests:', error);
+        return [];
+    }
 }
 
-function loadRecentRequests() {
-    const requests = getUserRequests().slice(0, 5);
+async function loadRecentRequests() {
+    const requests = await getUserRequests();
+    const recentRequests = requests.slice(0, 5);
     const container = document.getElementById('recentRequestsList');
 
-    if (requests.length === 0) {
+    if (recentRequests.length === 0) {
         container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No requests yet</p>';
         return;
     }
 
-    container.innerHTML = requests.map(req => `
+    container.innerHTML = recentRequests.map(req => `
         <div class="card" style="margin-bottom: var(--spacing-sm);">
             <div class="card-body">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -609,8 +812,21 @@ function showInstallPrompt() {
 // ========================================
 
 function showProfileModal() {
+    const currentImage = AppState.currentUser.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(AppState.currentUser.fullName)}&background=random`;
+
     const modal = createModal('Profile', `
         <form id="profileForm" onsubmit="handleProfileUpdate(event)">
+            <div style="text-align: center; margin-bottom: var(--spacing-lg);">
+                <div style="width: 120px; height: 120px; border-radius: 50%; background: var(--bg-tertiary); margin: 0 auto 10px auto; overflow: hidden; position: relative; border: 3px solid var(--primary-color);">
+                    <img id="profilePreview" src="${currentImage}" 
+                         style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <label for="profileImageInput" class="btn btn-sm btn-outline" style="cursor: pointer;">
+                    Change Photo
+                </label>
+                <input type="file" id="profileImageInput" accept="image/*" style="display: none;" onchange="previewProfileImage(this)">
+            </div>
+
             <div class="form-group">
                 <label for="profileFullName">Full Name</label>
                 <input type="text" id="profileFullName" value="${AppState.currentUser.fullName}" required>
@@ -648,54 +864,205 @@ function showProfileModal() {
     showModal(modal);
 }
 
-function handleProfileUpdate(event) {
+// CROPPER VARIABLES
+let cropperInstance = null;
+window.currentCroppedBlob = null;
+
+function previewProfileImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            showCropModal(e.target.result);
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+window.previewProfileImage = previewProfileImage;
+
+function showCropModal(imageUrl) {
+    // Remove existing if any
+    const existing = document.getElementById('cropModal');
+    if (existing) existing.remove();
+
+    const cropModalHtml = `
+        <div id="cropModal" style="position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+            <div style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;">
+                <h3 style="color: var(--text-primary); margin: 0 0 15px 0;">Adjust Photo</h3>
+                <div style="flex: 1; min-height: 300px; max-height: 50vh; background: #000; overflow: hidden; position: relative; border-radius: 8px;">
+                    <img id="imageToCrop" src="${imageUrl}" style="max-width: 100%; display: block;">
+                </div>
+                <div style="margin-top: 15px; text-align: center; color: var(--text-secondary); font-size: 0.9em;">
+                    Drag to move. Scroll to zoom.
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeCropModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmCrop()">Set Profile Picture</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const div = document.createElement('div');
+    div.innerHTML = cropModalHtml;
+    document.body.appendChild(div.firstElementChild);
+
+    const image = document.getElementById('imageToCrop');
+    cropperInstance = new Cropper(image, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 1,
+        background: false,
+        guides: true
+    });
+}
+window.showCropModal = showCropModal;
+
+function closeCropModal() {
+    const modal = document.getElementById('cropModal');
+    if (modal) modal.remove();
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+}
+window.closeCropModal = closeCropModal;
+
+function confirmCrop() {
+    if (!cropperInstance) return;
+
+    cropperInstance.getCroppedCanvas({
+        width: 400,
+        height: 400,
+        fillColor: '#fff',
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+    }).toBlob((blob) => {
+        window.currentCroppedBlob = blob;
+
+        // Update Preview
+        const previewUrl = URL.createObjectURL(blob);
+        document.getElementById('profilePreview').src = previewUrl;
+
+        closeCropModal();
+        showToast('Photo cropped!', 'success');
+    }, 'image/jpeg', 0.9);
+}
+window.confirmCrop = confirmCrop;
+
+async function handleProfileUpdate(event) {
     event.preventDefault();
-    
+
     const fullName = document.getElementById('profileFullName').value.trim();
     const username = document.getElementById('profileUsername').value.trim();
     const email = document.getElementById('profileEmail').value.trim();
     const address = document.getElementById('profileAddress').value.trim();
-    
+    const fileInput = document.getElementById('profileImageInput');
+
     // Validate inputs
     if (!fullName || !username || !email || !address) {
         showToast('All fields are required', 'error');
         return;
     }
-    
-    // Check if username is already taken by another user
-    const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const usernameTaken = allUsers.some(u => 
-        u.username === username && u.id !== AppState.currentUser.id
-    );
-    
-    if (usernameTaken) {
-        showToast('Username is already taken', 'error');
-        return;
+
+    try {
+        showToast('Saving profile...', 'info');
+
+        let profileImageUrl = AppState.currentUser.profileImage;
+
+        // Upload image if selected
+        // Check for cropped blob first
+        if (window.currentCroppedBlob) {
+            try {
+                // Upload the blob
+                const file = new File([window.currentCroppedBlob], "profile_cropped.jpg", { type: "image/jpeg" });
+                profileImageUrl = await uploadToCloudinary(file);
+            } catch (uploadError) {
+                console.error('Upload cropped failed:', uploadError);
+                showToast('Failed to upload image', 'warning');
+                return;
+            }
+        }
+        // Fallback to original file input if no crop happened
+        else if (fileInput.files.length > 0) {
+            try {
+                profileImageUrl = await uploadToCloudinary(fileInput.files[0]);
+            } catch (uploadError) {
+                console.error('Upload failed:', uploadError);
+                showToast('Failed to upload image', 'warning');
+                return;
+            }
+        }
+
+        const updates = {
+            fullName,
+            username,
+            email,
+            address,
+            profileImage: profileImageUrl,
+            updatedAt: new Date().toISOString()
+        };
+
+        // Update in Firebase
+        const collection = AppState.currentUser.role === 'admin' ? 'ADMIN' : 'RESIDENTS';
+
+        await DB.updateData(collection, AppState.currentUser.id, updates);
+
+        // Update local state
+        AppState.currentUser = { ...AppState.currentUser, ...updates };
+        localStorage.setItem('currentUser', JSON.stringify(AppState.currentUser));
+
+        // Update UI Manually
+        const userNameEl = document.getElementById('userName');
+        if (userNameEl) userNameEl.textContent = fullName;
+
+        if (profileImageUrl) {
+            const avatars = document.querySelectorAll('.user-avatar, .user-avatar-large');
+            avatars.forEach(container => {
+                container.innerHTML = `<img src="${profileImageUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            });
+        }
+
+        showToast('Profile updated successfully', 'success');
+        closeModal();
+
+    } catch (error) {
+        console.error('Profile update error:', error);
+
+        // Fallback for collection mismatch
+        if (error.message && error.message.includes('No document to update')) {
+            try {
+                const otherCollection = AppState.currentUser.role === 'admin' ? 'RESIDENTS' : 'ADMIN';
+                console.log(`Retrying update in ${otherCollection}...`);
+                await DB.updateData(otherCollection, AppState.currentUser.id, updates);
+
+                // If successful:
+                AppState.currentUser = { ...AppState.currentUser, ...updates };
+                localStorage.setItem('currentUser', JSON.stringify(AppState.currentUser));
+
+                // Update UI
+                const userNameEl = document.getElementById('userName');
+                if (userNameEl) userNameEl.textContent = fullName;
+                if (profileImageUrl) {
+                    const avatars = document.querySelectorAll('.user-avatar, .user-avatar-large');
+                    avatars.forEach(container => {
+                        container.innerHTML = `<img src="${profileImageUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                    });
+                }
+
+                showToast('Profile updated successfully', 'success');
+                closeModal();
+                return;
+            } catch (retryError) {
+                console.error('Retry failed:', retryError);
+            }
+        }
+
+        showToast('Failed to update profile: ' + error.message, 'error');
     }
-    
-    // Update current user
-    AppState.currentUser.fullName = fullName;
-    AppState.currentUser.username = username;
-    AppState.currentUser.email = email;
-    AppState.currentUser.address = address;
-    
-    // Update in localStorage users array
-    const userIndex = allUsers.findIndex(u => u.id === AppState.currentUser.id);
-    if (userIndex !== -1) {
-        allUsers[userIndex] = AppState.currentUser;
-        localStorage.setItem('users', JSON.stringify(allUsers));
-    }
-    
-    // Update current user session
-    localStorage.setItem('currentUser', JSON.stringify(AppState.currentUser));
-    
-    // Update UI
-    document.getElementById('userName').textContent = fullName;
-    
-    // Close modal and show success
-    closeModal();
-    showToast('Profile updated successfully!', 'success');
 }
+
+
 
 // ========================================
 // MODAL UTILITIES
@@ -755,3 +1122,6 @@ window.closeModal = closeModal;
 window.showModal = showModal;
 window.createModal = createModal;
 window.showToast = showToast;
+window.setupNewRequestButtons = setupNewRequestButtons;
+window.showSimpleRequestModal = showSimpleRequestModal;
+window.handleSimpleRequest = handleSimpleRequest;

@@ -1,0 +1,79 @@
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│        🔄 QUICK VERSION UPDATE REFERENCE CARD 🔄            │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+📋 WHEN YOU MAKE CODE CHANGES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Open: js/version.js
+
+2. Change this line:
+   const APP_VERSION = '2026.01.24.001';
+                                    ↑
+                            Increment this number!
+
+3. Save and deploy
+
+4. Done! ✅ No hard refresh needed
+
+
+📅 VERSION NUMBER FORMAT:
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+YYYY . MM . DD . BUILD
+ │     │    │     └─ Build number (increment for each update)
+ │     │    └─────── Day
+ │     └──────────── Month
+ └────────────────── Year
+
+Examples:
+• First update today:  2026.01.24.001
+• Second update today: 2026.01.24.002
+• Tomorrow's update:   2026.01.25.001
+
+
+💡 QUICK TIPS:
+━━━━━━━━━━━━━━━
+
+✓ Always increment version on ANY code change
+✓ Even CSS/HTML changes need version bump
+✓ Users auto-update on next page load
+✓ Check console for version confirmation
+✓ Version shows in user menu dropdown
+
+
+🔍 HOW TO CHECK IF IT WORKED:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Open browser console (F12)
+2. Look for: 🚀 BrgyONE v2026.01.24.XXX
+3. Should match your version.js number
+4. Check user menu → shows version at bottom
+
+
+🚨 TROUBLESHOOTING:
+━━━━━━━━━━━━━━━━━━
+
+Version not updating?
+→ Clear cache: DevTools → Application → Clear site data
+→ Check version.js was saved
+→ Check service worker updated: DevTools → Application → Service Workers
+
+
+❌ DON'T:
+• Don't skip version updates
+• Don't use same version twice
+• Don't forget to save version.js
+
+✅ DO:
+• Increment on every deploy
+• Keep consistent format
+• Test locally first
+
+
+┌─────────────────────────────────────────────────────────────┐
+│  Remember: Just change ONE number in js/version.js!        │
+│  Everything else is automatic! 🎉                           │
+└─────────────────────────────────────────────────────────────┘

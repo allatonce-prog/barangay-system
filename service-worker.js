@@ -2,14 +2,22 @@
 // SERVICE WORKER - Offline Caching & PWA
 // ========================================
 
-const CACHE_NAME = 'brgyone-v1';
-const urlsToCache = [
+// Import version configuration
+importScripts('./js/version.js');
+
+// Use version-based cache name (automatically updates when version.js changes)
+const CACHE_NAME = `brgyone-v${self.APP_VERSION || '1.0.0'}`;
+const CACHE_ASSETS = [
     './',
     './index.html',
+    './register-admin.html',
     './css/styles.css',
     './css/modern-enhancements.css',
+    './js/version.js',
+    './js/firebase-db.js',
     './js/app.js',
     './js/auth.js',
+    './js/register-admin.js',
     './js/resident.js',
     './js/admin.js',
     './js/notifications.js',
@@ -19,25 +27,17 @@ const urlsToCache = [
     './js/reports.js',
     './js/utils.js',
     './js/pwa-install.js',
-    './manifest.json',
-    './icons/icon-72x72.png',
-    './icons/icon-96x96.png',
-    './icons/icon-128x128.png',
-    './icons/icon-144x144.png',
-    './icons/icon-152x152.png',
-    './icons/icon-192x192.png',
-    './icons/icon-384x384.png',
-    './icons/icon-512x512.png'
+    './manifest.json'
 ];
 
 // Install Event - Cache resources
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Installing...');
+    console.log('[Service Worker] Installing version:', self.APP_VERSION || '1.0.0');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
                 console.log('[Service Worker] Caching app shell');
-                return cache.addAll(urlsToCache);
+                return cache.addAll(CACHE_ASSETS);
             })
             .then(() => {
                 console.log('[Service Worker] Installation complete');
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 
 // Activate Event - Clean up old caches
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Activating...');
+    console.log('[Service Worker] Activating version:', self.APP_VERSION || '1.0.0');
     event.waitUntil(
         caches.keys()
             .then((cacheNames) => {
@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
                 );
             })
             .then(() => {
-                console.log('[Service Worker] Activation complete');
+                console.log('[Service Worker] Activation complete - Now using:', CACHE_NAME);
                 return self.clients.claim();
             })
     );

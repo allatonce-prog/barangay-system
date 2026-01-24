@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // DEVELOPMENT RULES (USE FOR TESTING)
+    // ========================================
+    // Simple rules - allow all read/write for testing
+    // ⚠️ WARNING: These are NOT secure for production!
+    
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // ========================================
+    // PRODUCTION RULES (COMMENTED OUT)
+    // ========================================
+    // Uncomment and use these for production
+    // Comment out the rules above
+    
+    /*
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/ADMIN/$(request.auth.uid));
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // RESIDENTS collection
+    match /RESIDENTS/{userId} {
+      // Anyone can create (for registration)
+      allow create: if true;
+      
+      // Users can read their own data
+      // Admins can read all residents
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can update their own data
+      // Admins can update any resident
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+    
+    // ADMIN collection
+    match /ADMIN/{userId} {
+      // Only existing admins can create new admins
+      allow create: if isAdmin();
+      
+      // Admins can read all admin data
+      allow read: if isAdmin();
+      
+      // Admins can update their own data
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+    
+    // REQUESTS collection
+    match /REQUESTS/{requestId} {
+      // Authenticated users can create requests
+      allow create: if request.auth != null;
+      
+      // Users can read their own requests
+      // Admins can read all requests
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Only admins can update requests
+      allow update: if isAdmin();
+      
+      // Only admins can delete requests
+      allow delete: if isAdmin();
+    }
+    
+    // ANNOUNCEMENT collection
+    match /ANNOUNCEMENT/{announcementId} {
+      // Anyone can read announcements
+      allow read: if true;
+      
+      // Only admins can create announcements
+      allow create: if isAdmin();
+      
+      // Only admins can update announcements
+      allow update: if isAdmin();
+      
+      // Only admins can delete announcements
+      allow delete: if isAdmin();
+    }
+    
+    // APPOINTMENTS collection
+    match /APPOINTMENTS/{appointmentId} {
+      // Authenticated users can create appointments
+      allow create: if request.auth != null;
+      
+      // Users can read their own appointments
+      // Admins can read all appointments
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Users can update their own appointments
+      // Admins can update any appointment
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Only admins can delete appointments
+      allow delete: if isAdmin();
+    }
+    
+    // PAYMENTS collection
+    match /PAYMENTS/{paymentId} {
+      // Authenticated users can create payments
+      allow create: if request.auth != null;
+      
+      // Users can read their own payments
+      // Admins can read all payments
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Only admins can update payments
+      allow update: if isAdmin();
+      
+      // Only admins can delete payments
+      allow delete: if isAdmin();
+    }
+    
+    // NOTIFICATIONS collection
+    match /NOTIFICATIONS/{notificationId} {
+      // System can create notifications
+      allow create: if request.auth != null;
+      
+      // Users can read their own notifications
+      // Admins can read all notifications
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Users can update their own notifications (mark as read)
+      // Admins can update any notification
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Users can delete their own notifications
+      // Admins can delete any notification
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    */
+  }
+}
