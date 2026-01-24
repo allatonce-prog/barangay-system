@@ -1075,11 +1075,15 @@ a:hover {
     transition: all var(--transition-base);
     max-width: 90%;
     text-align: center;
+    pointer-events: none;
+    /* Prevent blocking clicks when hidden */
 }
 
 .toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+    /* Enable clicks when visible */
 }
 
 .toast.success {
