@@ -68,7 +68,7 @@
 .page-header h2 {
     font-size: 2rem;
     font-weight: 800;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    background: var(--primary-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -135,7 +135,7 @@
 }
 
 table thead {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    background: var(--bg-tertiary) !important;
 }
 
 table th {
@@ -151,7 +151,7 @@ table tr {
 }
 
 table tr:hover {
-    background: rgba(99, 102, 241, 0.03) !important;
+    background: var(--bg-hover) !important;
     transform: scale(1.005);
 }
 
@@ -159,8 +159,8 @@ table tr:hover {
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
-    border-color: #6366f1 !important;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+    border-color: var(--secondary-color) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
     transform: translateY(-1px);
 }
 
@@ -174,15 +174,15 @@ table tr:hover {
 /* Loading Spinner Enhancement */
 .loading-spinner {
     border-width: 5px !important;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
 }
 
 /* Dropdown Menu Enhancement */
 .dropdown-menu {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    background: rgba(30, 41, 59, 0.95) !important;
-    border: 1px solid rgba(51, 65, 85, 0.8) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid var(--border-color) !important;
 }
 
 /* Toast Enhancement */
@@ -207,27 +207,27 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-    background: #1e293b;
+    background: var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    background: var(--primary-gradient);
     border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: var(--secondary-gradient);
 }
 
 /* Selection Color */
 ::selection {
-    background: rgba(99, 102, 241, 0.2);
-    color: #4f46e5;
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--primary-color);
 }
 
 ::-moz-selection {
-    background: rgba(99, 102, 241, 0.2);
-    color: #4f46e5;
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--primary-color);
 }
 
 /* Focus Visible Enhancement */
@@ -236,7 +236,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-    outline: 3px solid rgba(99, 102, 241, 0.5) !important;
+    outline: 3px solid var(--secondary-light) !important;
     outline-offset: 3px !important;
     border-radius: 0.5rem;
 }
