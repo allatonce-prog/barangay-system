@@ -176,19 +176,24 @@ async function uploadToCloudinary(file) {
 }
 
 // Dynamic Greeting based on time of day
+
 function getDigitalGreeting(name) {
     const hour = new Date().getHours();
-    const isDay = hour >= 6 && hour < 18; // 6 AM to 6 PM (17:59)
+    let greeting = '';
 
-    // "Maayong buntag" (Morning) if day
-    // "Maayong gabie" (Evening/Night) if night
-
-    // User requested specifically this format with space before !
-    if (isDay) {
-        return `Maayong Buntag, ${name} !`;
+    if (hour >= 0 && hour < 6) {
+        greeting = 'Maayong Kadlawn'; // 12 AM - 5:59 AM
+    } else if (hour >= 6 && hour < 12) {
+        greeting = 'Maayong Buntag'; // 6 AM - 11:59 AM
+    } else if (hour >= 12 && hour < 14) {
+        greeting = 'Maayong Udto'; // 12 PM - 1:59 PM
+    } else if (hour >= 14 && hour < 17) {
+        greeting = 'Maayong Hapon'; // 2 PM - 4:59 PM
     } else {
-        return `Maayong Gabie, ${name} !`;
+        greeting = 'Maayong Gabie'; // 5 PM - 11:59 PM
     }
+
+    return `${greeting}, ${name} !`;
 }
 
 window.getDigitalGreeting = getDigitalGreeting;
