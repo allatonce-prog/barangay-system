@@ -174,4 +174,21 @@ async function uploadToCloudinary(file) {
         throw error;
     }
 }
-window.uploadToCloudinary = uploadToCloudinary;
+
+// Dynamic Greeting based on time of day
+function getDigitalGreeting(name) {
+    const hour = new Date().getHours();
+    const isDay = hour >= 6 && hour < 18; // 6 AM to 6 PM (17:59)
+
+    // "Maayong buntag" (Morning) if day
+    // "Maayong gabie" (Evening/Night) if night
+
+    // User requested specifically this format with space before !
+    if (isDay) {
+        return `Maayong Buntag, ${name} !`;
+    } else {
+        return `Maayong Gabie, ${name} !`;
+    }
+}
+
+window.getDigitalGreeting = getDigitalGreeting;

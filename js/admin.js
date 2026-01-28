@@ -44,7 +44,7 @@ async function loadAdminDashboard(container) {
 
         container.innerHTML = `
             <div class="page-header">
-                <h2>Admin Dashboard</h2>
+                <h2>${getDigitalGreeting(AppState.currentUser?.fullName || 'Admin')}</h2>
                 <p>Manage document requests and view statistics</p>
             </div>
             

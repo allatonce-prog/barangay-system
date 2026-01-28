@@ -427,7 +427,7 @@ function loadMorePage(container) {
 async function loadHomePage(container) {
     container.innerHTML = `
         <div class="page-header">
-            <h2>Welcome, ${AppState.currentUser.fullName}!</h2>
+            <h2>${getDigitalGreeting(AppState.currentUser?.fullName || 'Resident')}</h2>
             <p>Request your barangay documents easily and track their status</p>
         </div>
         
