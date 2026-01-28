@@ -1769,15 +1769,51 @@ textarea:focus-visible {
     }
 }
 
-.municipality-logo {
+.logo-wrapper {
     position: absolute;
     top: 20px;
     left: 20px;
     width: 60px;
     height: 60px;
+    z-index: 10;
+}
+
+.logo-swap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    z-index: 10;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     border: 2px solid white;
+    opacity: 0;
+    animation: swapLogo 8s infinite;
+}
+
+.logo-swap:nth-child(2) {
+    animation-delay: 4s;
+}
+
+@keyframes swapLogo {
+    0% {
+        opacity: 0;
+    }
+
+    5% {
+        opacity: 1;
+    }
+
+    45% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 0;
+    }
 }
