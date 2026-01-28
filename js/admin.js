@@ -39,7 +39,11 @@ async function loadAdminDashboard(container) {
 
         // Get recent requests
         // Sort by createdAt descending
-        allRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        allRequests.sort((a, b) => {
+            const dateA = convertFirebaseTimestamp(a.createdAt).getTime();
+            const dateB = convertFirebaseTimestamp(b.createdAt).getTime();
+            return dateB - dateA;
+        });
         const recentRequests = allRequests.slice(0, 5);
 
         container.innerHTML = `
@@ -233,7 +237,9 @@ async function loadAdminRequests(container) {
                 return statusA - statusB; // Lower status value comes first
             }
             // If same status, sort by date desc (newest first)
-            return new Date(b.createdAt) - new Date(a.createdAt);
+            const dateA = convertFirebaseTimestamp(a.createdAt).getTime();
+            const dateB = convertFirebaseTimestamp(b.createdAt).getTime();
+            return dateB - dateA;
         });
 
         // Store in global or closure for filtering without refetching? 

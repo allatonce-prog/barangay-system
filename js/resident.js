@@ -46,25 +46,9 @@ function showNewRequestModal() {
                 <textarea id="additionalInfo" placeholder="Any additional details or special requests"></textarea>
             </div>
             
-            <div class="form-group">
-                <label>Upload Requirements (Optional)</label>
-                <div class="file-upload">
-                    <input type="file" id="fileUpload" multiple accept="image/*,.pdf" onchange="handleFileSelect(event)">
-                    <div class="file-upload-label">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                        <span>Click to upload files</span>
-                    </div>
-                </div>
-                <div id="fileList" style="margin-top: var(--spacing-sm);"></div>
-            </div>
-            
             <div style="background: var(--bg-secondary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-top: var(--spacing-md);">
                 <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin: 0;">
-                    <strong>Note:</strong> Processing time is typically 3-5 business days. You will receive notifications about your request status.
+                    You will receive a notification about your request status
                 </p>
             </div>
             
@@ -160,14 +144,7 @@ async function handleNewRequest(event) {
         if (result.success) {
             request.id = result.id;
 
-            // Create notification for admin
-            await DB.createNotification({
-                userId: 'user-admin', // In production, get actual admin ID
-                title: 'New Document Request',
-                message: `${AppState.currentUser.fullName} requested ${documentType}`,
-                type: 'info',
-                requestId: request.id
-            });
+
 
             // Show success message
             showToast('Request submitted successfully!', 'success');

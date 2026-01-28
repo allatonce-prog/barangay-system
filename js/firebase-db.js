@@ -215,7 +215,7 @@ async function createRequest(requestData) {
         await createNotification({
             userId: 'role:admin',
             title: 'New Document Request',
-            message: `${requestData.fullName} requested ${requestData.documentType}`,
+            message: `${requestData.userName || requestData.fullName} requested ${requestData.documentType}`,
             type: 'info',
             requestId: requestId,
             link: 'admin-requests'
