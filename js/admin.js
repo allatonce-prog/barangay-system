@@ -156,7 +156,7 @@ async function loadAdminDashboard(container) {
                                             <td><strong>${req.trackingNumber}</strong></td>
                                             <td>${req.userName}</td>
                                             <td>${req.documentType}</td>
-                                            <td>${formatDate(req.createdAt)}</td>
+                                            <td>${req.createdAt ? formatDateTime(req.createdAt) : 'N/A'}</td>
                                             <td><span class="badge badge-${req.status}">${req.status}</span></td>
                                             <td>
                                                 <button class="btn btn-sm btn-outline" onclick="viewAdminRequestDetails('${req.id}')">Manage</button>
@@ -223,8 +223,18 @@ async function loadAdminRequests(container) {
         const result = await DB.getAllData('REQUESTS');
         let allRequests = result.success ? result.data : [];
 
-        // Sort by date desc
-        allRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Custom sort: Pending first, then by date desc, completed/rejected last
+        allRequests.sort((a, b) => {
+            const statusOrder = { 'pending': 1, 'processing': 2, 'approved': 3, 'completed': 4, 'rejected': 5 };
+            const statusA = statusOrder[a.status] || 99;
+            const statusB = statusOrder[b.status] || 99;
+
+            if (statusA !== statusB) {
+                return statusA - statusB; // Lower status value comes first
+            }
+            // If same status, sort by date desc (newest first)
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
 
         // Store in global or closure for filtering without refetching? 
         // For simplicity, we'll re-fetch or store in DOM. 

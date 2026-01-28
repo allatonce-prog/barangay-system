@@ -4,7 +4,7 @@
 // Update this version number whenever you make changes to force cache refresh
 // Format: YYYY.MM.DD.BUILD (e.g., 2026.01.24.001)
 
-const APP_VERSION = '2026.01.26.041';
+const APP_VERSION = '2026.01.26.046';
 
 // Export for use in service worker and app
 if (typeof window !== 'undefined') {
