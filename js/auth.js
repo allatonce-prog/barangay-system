@@ -45,12 +45,15 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
                 showApp();
             }, 500);
         } else {
+
             // Show specific error message for wrong credentials
-            if (result.error.includes('invalid-login-credentials') || result.error.includes('wrong-password')) {
-                showToast('Invalid email or password. Please check your credentials and try again.', 'error');
-            } else if (result.error.includes('user-not-found')) {
-                showToast('User not found. Please register first or check your email.', 'error');
-            } else if (result.error.includes('too-many-requests')) {
+            const errorMsg = (result.error || '').toLowerCase();
+
+            if (errorMsg.includes('password') || errorMsg.includes('credential')) {
+                showToast('Incorrect password. Please check your password and try again.', 'error');
+            } else if (errorMsg.includes('not found') || errorMsg.includes('no user')) {
+                showToast('Account not registered. Please check your email or username.', 'error');
+            } else if (errorMsg.includes('too many requests')) {
                 showToast('Too many failed attempts. Please try again later.', 'error');
             } else {
                 showToast(result.error || 'Login failed. Please try again.', 'error');
