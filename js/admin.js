@@ -188,37 +188,34 @@ async function loadAdminRequests(container) {
     console.log('Loading Admin Requests page...');
 
     container.innerHTML = `
-        <div class="page-header">
+        <div class="page-header" style="margin-bottom: 0;">
             <h2>Manage Requests</h2>
-            <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap; align-items: center;">
-                <div style="position: relative; flex: 1; min-width: 200px;">
-                    <input type="text" id="requestSearch" placeholder="Search name or tracking #..." 
-                        onkeyup="filterRequests()"
-                        style="width: 100%; padding: var(--spacing-sm) var(--spacing-md); padding-left: 36px; border: 2px solid var(--border-color); border-radius: var(--radius-md);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                </div>
-                
-                <select id="statusFilter" onchange="filterRequests()" style="padding: var(--spacing-sm) var(--spacing-md); border: 2px solid var(--border-color); border-radius: var(--radius-md);">
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="processing">Processing</option>
-                    <option value="completed">Completed</option>
-                    <option value="rejected">Rejected</option>
-                </select>
+            
+            <div style="margin-bottom: var(--spacing-md); position: relative; margin-top: var(--spacing-md);">
+                <input type="text" id="requestSearch" placeholder="Search name or tracking #..." 
+                    onkeyup="filterRequests()"
+                    style="width: 100%; padding: var(--spacing-sm) var(--spacing-md); padding-left: 36px; border: 2px solid var(--border-color); border-radius: var(--radius-md);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
             </div>
+            
+            <!-- Context Tabs -->
+            <div style="display: flex; overflow-x: auto; border-bottom: 1px solid var(--border-color); margin-bottom: var(--spacing-md); scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 0;">
+                <button class="status-tab" data-status="all" onclick="selectStatusTab('all')" style="flex-shrink: 0; padding: var(--spacing-sm) var(--spacing-md); border: none; background: transparent; color: var(--primary-color); font-weight: 600; cursor: pointer; border-bottom: 3px solid var(--primary-color); margin-bottom: -1px; white-space: nowrap; transition: color 0.2s;">All</button>
+                <button class="status-tab" data-status="pending" onclick="selectStatusTab('pending')" style="flex-shrink: 0; padding: var(--spacing-sm) var(--spacing-md); border: none; background: transparent; color: var(--text-secondary); font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color 0.2s;">Pending</button>
+                <button class="status-tab" data-status="processing" onclick="selectStatusTab('processing')" style="flex-shrink: 0; padding: var(--spacing-sm) var(--spacing-md); border: none; background: transparent; color: var(--text-secondary); font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color 0.2s;">Processing</button>
+                <button class="status-tab" data-status="completed" onclick="selectStatusTab('completed')" style="flex-shrink: 0; padding: var(--spacing-sm) var(--spacing-md); border: none; background: transparent; color: var(--text-secondary); font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color 0.2s;">Completed</button>
+                <button class="status-tab" data-status="rejected" onclick="selectStatusTab('rejected')" style="flex-shrink: 0; padding: var(--spacing-sm) var(--spacing-md); border: none; background: transparent; color: var(--text-secondary); font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color 0.2s;">Rejected</button>
+            </div>
+            <input type="hidden" id="statusFilter" value="all">
         </div>
         
-        <div class="card">
-            <div class="card-body">
-                <div id="adminRequestsList">
-                    <div style="text-align: center; padding: var(--spacing-xl);">
-                        <div class="spinner" style="margin: 0 auto;"></div>
-                        <p style="margin-top: var(--spacing-md); color: var(--text-secondary);">Loading requests...</p>
-                    </div>
-                </div>
+        <div id="adminRequestsList">
+            <div style="text-align: center; padding: var(--spacing-xl);">
+                <div class="spinner" style="margin: 0 auto;"></div>
+                <p style="margin-top: var(--spacing-md); color: var(--text-secondary);">Loading requests...</p>
             </div>
         </div>
     `;
@@ -263,30 +260,23 @@ function displayAdminRequests(requests) {
     }
 
     container.innerHTML = `
-        <div style="display: grid; gap: var(--spacing-md); grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+        <div style="display: grid; gap: var(--spacing-sm); grid-template-columns: 1fr;">
             ${requests.map(req => `
-                <div class="card" onclick="viewAdminRequestDetails('${req.id}')" style="cursor: pointer; transition: transform 0.2s; margin-bottom: 0;">
-                    <div class="card-body">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: 4px;">
-                                    <span style="font-family: monospace; background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">${req.trackingNumber}</span>
-                                </div>
-                                <h4 style="margin: 0; color: var(--text-primary); font-size: 1.1em;">${req.documentType}</h4>
+                <div class="card" onclick="viewAdminRequestDetails('${req.id}')" style="cursor: pointer; transition: transform 0.2s; margin-bottom: 0; padding: var(--spacing-sm) var(--spacing-md);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1; min-width: 0; padding-right: var(--spacing-md);">
+                            <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: 2px;">
+                                <span style="font-family: monospace; background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 0.75em; color: var(--text-secondary);">${req.trackingNumber}</span>
+                                <span style="font-size: 0.8em; color: var(--text-light);">${formatDateTime(req.createdAt)}</span>
                             </div>
-                            <span class="badge badge-${req.status}">${req.status}</span>
-                        </div>
-                        
-                        <div style="margin-top: var(--spacing-md);">
-                            <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-xs); color: var(--text-secondary); font-size: 0.9em;">
+                            <h4 style="margin: 0 0 2px 0; color: var(--text-primary); font-size: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${req.documentType}</h4>
+                            <div style="display: flex; align-items: center; gap: var(--spacing-xs); color: var(--text-secondary); font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 <span>👤 ${req.userName}</span>
+                                ${req.purpose ? `<span style="color: var(--border-color);">|</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${req.purpose}</span>` : ''}
                             </div>
-                            <div style="color: var(--text-secondary); font-size: 0.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: var(--spacing-sm);">
-                                ${req.purpose}
-                            </div>
-                            <div style="font-size: 0.8em; color: var(--text-light); text-align: right;">
-                                ${formatDateTime(req.createdAt)}
-                            </div>
+                        </div>
+                        <div style="flex-shrink: 0;">
+                            <span class="badge badge-${req.status}" style="font-size: 0.75em; padding: 4px 8px;">${req.status}</span>
                         </div>
                     </div>
                 </div>
@@ -314,6 +304,23 @@ function filterRequests() {
     });
 
     displayAdminRequests(filtered);
+}
+
+window.selectStatusTab = function (status) {
+    document.getElementById('statusFilter').value = status;
+    const tabs = document.querySelectorAll('.status-tab');
+    tabs.forEach(tab => {
+        if (tab.dataset.status === status) {
+            tab.style.color = 'var(--primary-color)';
+            tab.style.fontWeight = '600';
+            tab.style.borderBottom = '3px solid var(--primary-color)';
+        } else {
+            tab.style.color = 'var(--text-secondary)';
+            tab.style.fontWeight = '500';
+            tab.style.borderBottom = '3px solid transparent';
+        }
+    });
+    filterRequests();
 }
 
 // ========================================

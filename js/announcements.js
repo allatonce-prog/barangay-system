@@ -385,7 +385,7 @@ async function filterAdminAnnouncements() {
 
 async function deleteAnnouncement(announcementId) {
     if (confirm('Are you sure you want to delete this announcement?')) {
-        const result = await DB.deleteData('announcements', announcementId);
+        const result = await DB.deleteData('ANNOUNCEMENT', announcementId);
 
         if (result.success) {
             showToast('Announcement deleted successfully', 'success');
