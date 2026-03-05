@@ -525,8 +525,9 @@ a:hover {
     transform: scale(0.95);
 }
 
-/* Custom Colors for Resident Nav - Floating Magic Effect */
-#residentNav {
+/* Custom Colors for Resident Nav & Admin Nav - Floating Magic Effect */
+#residentNav,
+#adminNav {
     padding: 0 var(--spacing-md);
     gap: 0;
     background: #ffffff;
@@ -539,7 +540,8 @@ a:hover {
     border: none;
 }
 
-#residentNav .nav-item {
+#residentNav .nav-item,
+#adminNav .nav-item {
     border-radius: 0;
     margin: 0;
     opacity: 1;
@@ -551,28 +553,33 @@ a:hover {
     overflow: visible;
 }
 
-#residentNav .nav-item[data-page="home"] {
+#residentNav .nav-item[data-page="home"],
+#adminNav .nav-item[data-page="admin-dashboard"] {
     --nav-box-bg: var(--secondary-color);
     /* Blue */
 }
 
-#residentNav .nav-item[data-page="announcements"] {
+#residentNav .nav-item[data-page="announcements"],
+#adminNav .nav-item[data-page="admin-announcements"] {
     --nav-box-bg: var(--bg-tertiary);
     /* Light Gray */
     --nav-text-color: var(--text-primary);
 }
 
-#residentNav .nav-item[data-page="requests"] {
+#residentNav .nav-item[data-page="requests"],
+#adminNav .nav-item[data-page="admin-requests"] {
     --nav-box-bg: var(--primary-color);
     /* Red */
 }
 
-#residentNav .nav-item[data-page="track"] {
+#residentNav .nav-item[data-page="track"],
+#adminNav .nav-item[data-page="admin-reports"] {
     --nav-box-bg: var(--secondary-dark);
     /* Dark Blue */
 }
 
-#residentNav .nav-item svg {
+#residentNav .nav-item svg,
+#adminNav .nav-item svg {
     width: 24px;
     height: 24px;
     padding: 0;
@@ -584,18 +591,21 @@ a:hover {
     z-index: 2;
 }
 
-#residentNav .nav-item span {
+#residentNav .nav-item span,
+#adminNav .nav-item span {
     transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 /* Floating Active State */
-#residentNav .nav-item.active {
+#residentNav .nav-item.active,
+#adminNav .nav-item.active {
     background: transparent;
     box-shadow: none;
     transform: none;
 }
 
-#residentNav .nav-item.active svg {
+#residentNav .nav-item.active svg,
+#adminNav .nav-item.active svg {
     background: var(--nav-box-bg);
     color: var(--nav-text-color, white);
     padding: 14px;
@@ -606,24 +616,28 @@ a:hover {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-#residentNav .nav-item.active span {
+#residentNav .nav-item.active span,
+#adminNav .nav-item.active span {
     transform: translateY(-4px);
     color: var(--nav-box-bg);
     font-weight: 700;
 }
 
-#residentNav .nav-item[data-page="announcements"].active span {
+#residentNav .nav-item[data-page="announcements"].active span,
+#adminNav .nav-item[data-page="admin-announcements"].active span {
     color: var(--text-primary);
 }
 
-#residentNav .nav-item:hover {
+#residentNav .nav-item:hover,
+#adminNav .nav-item:hover {
     background: transparent;
     color: var(--text-primary);
     transform: none;
     box-shadow: none;
 }
 
-#residentNav .nav-item::before {
+#residentNav .nav-item::before,
+#adminNav .nav-item::before {
     display: none;
 }
 
