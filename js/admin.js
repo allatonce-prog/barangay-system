@@ -37,15 +37,6 @@ async function loadAdminDashboard(container) {
         const rejectedRequests = allRequests.filter(r => r.status === 'rejected').length;
         const totalResidents = residents.length;
 
-        // Get recent requests
-        // Sort by createdAt descending
-        allRequests.sort((a, b) => {
-            const dateA = convertFirebaseTimestamp(a.createdAt).getTime();
-            const dateB = convertFirebaseTimestamp(b.createdAt).getTime();
-            return dateB - dateA;
-        });
-        const recentRequests = allRequests.slice(0, 5);
-
         container.innerHTML = `
             <div class="page-header">
                 <h2>${getDigitalGreeting(AppState.currentUser?.fullName || 'Admin')}</h2>
@@ -132,45 +123,6 @@ async function loadAdminDashboard(container) {
                     </div>
                     <div class="stat-value">${totalResidents}</div>
                     <div class="stat-label">Residents</div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Recent Requests</h3>
-                </div>
-                <div class="card-body">
-                    ${recentRequests.length === 0 ?
-                '<p style="text-align: center; color: var(--text-secondary); padding: var(--spacing-xl);">No requests yet</p>' :
-                `<div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Tracking #</th>
-                                        <th>Resident</th>
-                                        <th>Document</th>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${recentRequests.map(req => `
-                                        <tr>
-                                            <td><strong>${req.trackingNumber}</strong></td>
-                                            <td>${req.userName}</td>
-                                            <td>${req.documentType}</td>
-                                            <td>${req.createdAt ? formatDateTime(req.createdAt) : 'N/A'}</td>
-                                            <td><span class="badge badge-${req.status}">${req.status}</span></td>
-                                            <td>
-                                                <button class="btn btn-sm btn-outline" onclick="viewAdminRequestDetails('${req.id}')">Manage</button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>`
-            }
                 </div>
             </div>
         `;

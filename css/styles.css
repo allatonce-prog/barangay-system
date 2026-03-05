@@ -525,6 +525,108 @@ a:hover {
     transform: scale(0.95);
 }
 
+/* Custom Colors for Resident Nav - Floating Magic Effect */
+#residentNav {
+    padding: 0 var(--spacing-md);
+    gap: 0;
+    background: #ffffff;
+    border-radius: var(--radius-2xl);
+    bottom: var(--spacing-md);
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    width: auto;
+    box-shadow: var(--shadow-xl), 0 5px 20px rgba(0, 0, 0, 0.1);
+    border: none;
+}
+
+#residentNav .nav-item {
+    border-radius: 0;
+    margin: 0;
+    opacity: 1;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    box-shadow: none;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    overflow: visible;
+}
+
+#residentNav .nav-item[data-page="home"] {
+    --nav-box-bg: var(--secondary-color);
+    /* Blue */
+}
+
+#residentNav .nav-item[data-page="announcements"] {
+    --nav-box-bg: var(--bg-tertiary);
+    /* Light Gray */
+    --nav-text-color: var(--text-primary);
+}
+
+#residentNav .nav-item[data-page="requests"] {
+    --nav-box-bg: var(--primary-color);
+    /* Red */
+}
+
+#residentNav .nav-item[data-page="track"] {
+    --nav-box-bg: var(--secondary-dark);
+    /* Dark Blue */
+}
+
+#residentNav .nav-item svg {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0px solid transparent;
+    border-radius: 50%;
+    margin-bottom: 2px;
+    box-sizing: content-box;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 2;
+}
+
+#residentNav .nav-item span {
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Floating Active State */
+#residentNav .nav-item.active {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+}
+
+#residentNav .nav-item.active svg {
+    background: var(--nav-box-bg);
+    color: var(--nav-text-color, white);
+    padding: 14px;
+    border: 6px solid var(--bg-secondary);
+    transform: translateY(-26px);
+    margin-bottom: -34px;
+    /* Combats layout push from padding+border */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#residentNav .nav-item.active span {
+    transform: translateY(-4px);
+    color: var(--nav-box-bg);
+    font-weight: 700;
+}
+
+#residentNav .nav-item[data-page="announcements"].active span {
+    color: var(--text-primary);
+}
+
+#residentNav .nav-item:hover {
+    background: transparent;
+    color: var(--text-primary);
+    transform: none;
+    box-shadow: none;
+}
+
+#residentNav .nav-item::before {
+    display: none;
+}
+
 /* ========================================
    MAIN CONTENT
    ======================================== */

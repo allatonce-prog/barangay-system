@@ -67,11 +67,48 @@ function setupEventListeners() {
         });
     }
 
-    // Close menu when clicking outside
+    // Close menus when clicking outside
     document.addEventListener('click', (e) => {
-        if (userMenu && !userMenu.contains(e.target) && e.target !== userMenuBtn) {
+        if (userMenu && !userMenu.contains(e.target) && e.target !== userMenuBtn && !userMenuBtn.contains(e.target)) {
             userMenu.style.display = 'none';
         }
+
+        const navMenuDropdown = document.getElementById('navMenuDropdown');
+        const logoBtn = document.getElementById('logoBtn');
+        if (navMenuDropdown && !navMenuDropdown.contains(e.target) && e.target !== logoBtn && (!logoBtn || !logoBtn.contains(e.target))) {
+            navMenuDropdown.style.display = 'none';
+        }
+    });
+
+    // Logo navigation toggle
+    const logoBtn = document.getElementById('logoBtn');
+    if (logoBtn) {
+        logoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const navMenuDropdown = document.getElementById('navMenuDropdown');
+            if (navMenuDropdown) {
+                navMenuDropdown.style.display = navMenuDropdown.style.display === 'none' ? 'block' : 'none';
+
+                // Close user menu if it's open
+                if (userMenu && userMenu.style.display === 'block') {
+                    userMenu.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Logo dropdown navigation items
+    const navDropdownItems = document.querySelectorAll('.nav-dropdown-item');
+    navDropdownItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const page = item.getAttribute('data-page');
+            navigateToPage(page);
+
+            const navMenuDropdown = document.getElementById('navMenuDropdown');
+            if (navMenuDropdown) {
+                navMenuDropdown.style.display = 'none';
+            }
+        });
     });
 
     // Profile button
@@ -642,10 +679,22 @@ function showApp() {
     if (AppState.currentUser.role === 'admin') {
         document.getElementById('residentNav').style.display = 'none';
         document.getElementById('adminNav').style.display = 'flex';
+
+        const residentNavDropdown = document.getElementById('residentNavDropdown');
+        const adminNavDropdown = document.getElementById('adminNavDropdown');
+        if (residentNavDropdown) residentNavDropdown.style.display = 'none';
+        if (adminNavDropdown) adminNavDropdown.style.display = 'block';
+
         navigateToPage('admin-dashboard');
     } else {
         document.getElementById('residentNav').style.display = 'flex';
         document.getElementById('adminNav').style.display = 'none';
+
+        const residentNavDropdown = document.getElementById('residentNavDropdown');
+        const adminNavDropdown = document.getElementById('adminNavDropdown');
+        if (residentNavDropdown) residentNavDropdown.style.display = 'block';
+        if (adminNavDropdown) adminNavDropdown.style.display = 'none';
+
         navigateToPage('home');
     }
 
