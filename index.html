@@ -446,19 +446,81 @@
         }, 1000);
     </script>
 
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration & Version Manager -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js')
                     .then(registration => {
                         console.log('Service Worker registered successfully:', registration.scope);
+
+                        // Listen for updates to the service worker itself
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        console.log('SW Update found, forcing refresh...');
+                                        forceAppUpdate();
+                                    }
+                                });
+                            }
+                        });
                     })
                     .catch(error => {
                         console.log('Service Worker registration failed:', error);
                     });
             });
         }
+
+        // Active version manager: bypass caches to check server version.js
+        function checkForUpdates() {
+            if (!window.APP_VERSION) return;
+            // Fetch version.js with timestamp query to bust browser cache
+            fetch(`./js/version.js?t=${new Date().getTime()}`)
+                .then(response => response.text())
+                .then(text => {
+                    const match = text.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+                    if (match && match[1]) {
+                        const serverVersion = match[1];
+                        if (serverVersion !== window.APP_VERSION) {
+                            console.log(`Version mismatch! Current: ${window.APP_VERSION}, Server: ${serverVersion}`);
+                            forceAppUpdate();
+                        }
+                    }
+                })
+                .catch(err => console.debug('Version check skipped or offline:', err));
+        }
+
+        function forceAppUpdate() {
+            // Unregister service workers and clear caches
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                }).then(() => {
+                    if (window.caches) {
+                        caches.keys().then(names => {
+                            for (let name of names) caches.delete(name);
+                        });
+                    }
+                    // Hard reload to fetch new assets from server
+                    window.location.reload(true);
+                });
+            } else {
+                window.location.reload(true);
+            }
+        }
+
+        // Trigger updates when tab regains focus or comes back online
+        window.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkForUpdates();
+        });
+        window.addEventListener('online', checkForUpdates);
+
+        // Check occasionally while app is open (every 5 mins)
+        setInterval(checkForUpdates, 300000);
 
         // Display app version
         if (window.APP_VERSION) {
