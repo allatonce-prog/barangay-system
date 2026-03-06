@@ -528,8 +528,11 @@
         });
         window.addEventListener('online', checkForUpdates);
 
-        // Check occasionally while app is open (every 5 mins)
-        setInterval(checkForUpdates, 300000);
+        // Initial check on load
+        setTimeout(checkForUpdates, 3000);
+
+        // Check occasionally while app is open (every 1 min)
+        setInterval(checkForUpdates, 60000);
 
         // Display app version
         if (window.APP_VERSION) {
