@@ -552,145 +552,238 @@ async function handleRejectRequest(event, requestId) {
 
 async function loadAdminReports(container) {
     container.innerHTML = `
-        <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h2>Reports & Analytics</h2>
-                <p>View statistics and generate reports</p>
+        <div class="page-header" style="flex-direction: column; align-items: flex-start; gap: var(--spacing-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <h2>Reports & Analytics</h2>
+                    <p>View statistics and generate reports</p>
+                </div>
+                <button class="btn btn-outline" onclick="window.print()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Print
+                </button>
             </div>
-            <button class="btn btn-outline" onclick="window.print()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
-                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                    <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-                Print
-            </button>
+
+            <!-- Filter Bar -->
+            <div class="card" style="width: 100%; margin-bottom: 0; padding: var(--spacing-md);">
+                <div style="display: flex; gap: var(--spacing-md); flex-wrap: wrap; align-items: flex-end;">
+                    <div class="form-group" style="margin: 0; flex: 1; min-width: 200px;">
+                        <label style="font-size: 0.8em; color: var(--text-secondary); margin-bottom: 4px; display: block;">Time Period</label>
+                        <select id="reportDateFilter" onchange="handleReportFilterChange()" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="this-week">This Week</option>
+                            <option value="this-month">This Month</option>
+                            <option value="custom">Custom Date Range</option>
+                        </select>
+                    </div>
+                    
+                    <div id="customDateRange" style="display: none; gap: var(--spacing-md); flex: 2; min-width: 300px;">
+                        <div class="form-group" style="margin: 0; flex: 1;">
+                            <label style="font-size: 0.8em; color: var(--text-secondary); margin-bottom: 4px; display: block;">Start Date</label>
+                            <input type="date" id="reportStartDate" onchange="applyReportFilter()" style="width: 100%; padding: 7px; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                        </div>
+                        <div class="form-group" style="margin: 0; flex: 1;">
+                            <label style="font-size: 0.8em; color: var(--text-secondary); margin-bottom: 4px; display: block;">End Date</label>
+                            <input type="date" id="reportEndDate" onchange="applyReportFilter()" style="width: 100%; padding: 7px; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div id="reportsContent" style="padding-bottom: 120px;">
-            <div style="text-align: center; padding: var(--spacing-xl);">
-                 <div class="spinner" style="margin: 0 auto;"></div>
-                 <p style="margin-top: var(--spacing-md); color: var(--text-secondary);">Generating reports...</p>
-            </div>
+             <!-- Stats will be loaded here -->
         </div>
     `;
 
     try {
         const result = await DB.getAllData('REQUESTS');
-        const allRequests = result.success ? result.data : [];
-
-        // Calculate statistics by document type
-        const documentStats = {};
-
-        // Use global DOCUMENT_TYPES if available, else fallback
-        const docTypes = (typeof DOCUMENT_TYPES !== 'undefined') ? DOCUMENT_TYPES : (window.DOCUMENT_TYPES || []);
-
-        docTypes.forEach(type => {
-            documentStats[type] = allRequests.filter(r => r.documentType === type).length;
-        });
-
-        // Calculate Stats by Status
-        const statusStats = {
-            pending: allRequests.filter(r => r.status === 'pending').length,
-            processing: allRequests.filter(r => r.status === 'processing').length,
-            completed: allRequests.filter(r => r.status === 'completed').length,
-            rejected: allRequests.filter(r => r.status === 'rejected').length
-        };
-
-        // Calculate monthly statistics
-        const monthlyStats = {};
-        allRequests.forEach(req => {
-            const date = convertFirebaseTimestamp(req.createdAt);
-            const month = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-            monthlyStats[month] = (monthlyStats[month] || 0) + 1;
-        });
-
-        const reportsContent = document.getElementById('reportsContent');
-        reportsContent.innerHTML = `
-            <!-- STATUS OVERVIEW -->
-            <div class="card" style="margin-bottom: var(--spacing-lg);">
-                <div class="card-header">
-                    <h3 class="card-title">Request Status Overview</h3>
-                </div>
-                <div class="card-body">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--spacing-md);">
-                        <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--warning-color);">
-                            <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.pending}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.9em;">Pending</div>
-                        </div>
-                        <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--primary-color);">
-                            <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.processing}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.9em;">Processing</div>
-                        </div>
-                        <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--success-color);">
-                            <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.completed}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.9em;">Completed</div>
-                        </div>
-                        <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--danger-color);">
-                            <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.rejected}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.9em;">Rejected</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Requests by Document Type</h3>
-                </div>
-                <div class="card-body">
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Document Type</th>
-                                    <th>Total Requests</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${Object.entries(documentStats).map(([type, count]) => `
-                                    <tr>
-                                        <td>${type}</td>
-                                        <td><strong>${count}</strong></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Monthly Requests</h3>
-                </div>
-                <div class="card-body">
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Month</th>
-                                    <th>Total Requests</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${Object.entries(monthlyStats).reverse().map(([month, count]) => `
-                                    <tr>
-                                        <td>${month}</td>
-                                        <td><strong>${count}</strong></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        `;
-
+        window.allReportRequests = result.success ? result.data : [];
+        applyReportFilter();
     } catch (error) {
         console.error('Error loading reports:', error);
         container.innerHTML = '<p style="color: var(--error-color);">Error generating reports</p>';
     }
+}
+
+window.handleReportFilterChange = function () {
+    const filter = document.getElementById('reportDateFilter').value;
+    const customRange = document.getElementById('customDateRange');
+
+    if (filter === 'custom') {
+        customRange.style.display = 'flex';
+    } else {
+        customRange.style.display = 'none';
+        applyReportFilter();
+    }
+}
+
+window.applyReportFilter = function () {
+    const filter = document.getElementById('reportDateFilter').value;
+    const allRequests = window.allReportRequests || [];
+    let filteredRequests = [...allRequests];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (filter === 'today') {
+        filteredRequests = allRequests.filter(req => {
+            const date = convertFirebaseTimestamp(req.createdAt);
+            return date >= today;
+        });
+    } else if (filter === 'yesterday') {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        filteredRequests = allRequests.filter(req => {
+            const date = convertFirebaseTimestamp(req.createdAt);
+            return date >= yesterday && date < today;
+        });
+    } else if (filter === 'this-week') {
+        const firstDayOfWeek = new Date(today);
+        firstDayOfWeek.setDate(today.getDate() - today.getDay());
+        filteredRequests = allRequests.filter(req => {
+            const date = convertFirebaseTimestamp(req.createdAt);
+            return date >= firstDayOfWeek;
+        });
+    } else if (filter === 'this-month') {
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        filteredRequests = allRequests.filter(req => {
+            const date = convertFirebaseTimestamp(req.createdAt);
+            return date >= firstDayOfMonth;
+        });
+    } else if (filter === 'custom') {
+        const startDateVal = document.getElementById('reportStartDate').value;
+        const endDateVal = document.getElementById('reportEndDate').value;
+
+        if (startDateVal) {
+            const start = new Date(startDateVal);
+            start.setHours(0, 0, 0, 0);
+            filteredRequests = filteredRequests.filter(req => convertFirebaseTimestamp(req.createdAt) >= start);
+        }
+        if (endDateVal) {
+            const end = new Date(endDateVal);
+            end.setHours(23, 59, 59, 999);
+            filteredRequests = filteredRequests.filter(req => convertFirebaseTimestamp(req.createdAt) <= end);
+        }
+    }
+
+    renderReportStats(filteredRequests);
+}
+
+function renderReportStats(allRequests) {
+    // Calculate statistics by document type
+    const documentStats = {};
+    const docTypes = (typeof DOCUMENT_TYPES !== 'undefined') ? DOCUMENT_TYPES : (window.DOCUMENT_TYPES || []);
+
+    docTypes.forEach(type => {
+        documentStats[type] = allRequests.filter(r => r.documentType === type).length;
+    });
+
+    // Calculate Stats by Status
+    const statusStats = {
+        pending: allRequests.filter(r => r.status === 'pending').length,
+        processing: allRequests.filter(r => r.status === 'processing').length,
+        completed: allRequests.filter(r => r.status === 'completed').length,
+        rejected: allRequests.filter(r => r.status === 'rejected').length
+    };
+
+    // Calculate monthly statistics
+    const monthlyStats = {};
+    allRequests.forEach(req => {
+        const date = convertFirebaseTimestamp(req.createdAt);
+        const month = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+        monthlyStats[month] = (monthlyStats[month] || 0) + 1;
+    });
+
+    const reportsContent = document.getElementById('reportsContent');
+    if (!reportsContent) return;
+
+    reportsContent.innerHTML = `
+        <!-- STATUS OVERVIEW -->
+        <div class="card" style="margin-bottom: var(--spacing-lg); margin-top: var(--spacing-lg);">
+            <div class="card-header">
+                <h3 class="card-title">Request Status Overview (${allRequests.length} Total)</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--spacing-md);">
+                    <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--warning-color);">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.pending}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9em;">Pending</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--primary-color);">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.processing}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9em;">Processing</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--success-color);">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.completed}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9em;">Completed</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); text-align: center; border-left: 4px solid var(--danger-color);">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--text-primary);">${statusStats.rejected}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9em;">Rejected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Requests by Document Type</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Document Type</th>
+                                <th>Total Requests</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(documentStats).map(([type, count]) => `
+                                <tr>
+                                    <td>${type}</td>
+                                    <td><strong>${count}</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Requests Over Time</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Total Requests</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(monthlyStats).reverse().map(([month, count]) => `
+                                <tr>
+                                    <td>${month}</td>
+                                    <td><strong>${count}</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // Make functions globally available
