@@ -243,8 +243,19 @@
 
                 <div class="form-group">
                     <label for="adminPassword">Password *</label>
-                    <input type="password" id="adminPassword" required placeholder="Create a strong password"
-                        minlength="8">
+                    <div class="password-input-wrapper">
+                        <input type="password" id="adminPassword" required placeholder="Create a strong password"
+                            minlength="8">
+                        <button type="button" class="password-toggle"
+                            onclick="togglePasswordVisibility('adminPassword', this)" tabindex="-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="password-strength">
                         <div id="passwordStrengthBar" class="password-strength-bar"></div>
                     </div>
@@ -275,7 +286,18 @@
 
                 <div class="form-group">
                     <label for="adminConfirmPassword">Confirm Password *</label>
-                    <input type="password" id="adminConfirmPassword" required placeholder="Confirm your password">
+                    <div class="password-input-wrapper">
+                        <input type="password" id="adminConfirmPassword" required placeholder="Confirm your password">
+                        <button type="button" class="password-toggle"
+                            onclick="togglePasswordVisibility('adminConfirmPassword', this)" tabindex="-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="form-group">
