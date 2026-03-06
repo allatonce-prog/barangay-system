@@ -199,7 +199,6 @@ function showSimpleRequestModal() {
                     <option value="Certificate of Residency">Certificate of Residency</option>
                     <option value="Certificate of Indigency">Certificate of Indigency</option>
                     <option value="Cedula">Cedula</option>
-                    <option value="Barangay ID">Barangay ID</option>
                     <option value="Other">Other</option>
                 </select>
             </div>

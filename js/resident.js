@@ -8,7 +8,6 @@ const DOCUMENT_TYPES = [
     'Certificate of Residency',
     'Certificate of Indigency',
     'Cedula',
-    'Barangay ID',
     'Complaint Certificate',
     'Other'
 ];
