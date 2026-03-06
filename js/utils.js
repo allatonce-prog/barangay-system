@@ -25,7 +25,11 @@ function convertFirebaseTimestamp(timestamp) {
 
     // If it's a string or number, try to parse it
     try {
-        return new Date(timestamp);
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) {
+            return new Date(); // Fallback for "Invalid Date"
+        }
+        return date;
     } catch (e) {
         console.error('Error converting timestamp:', e);
         return new Date();

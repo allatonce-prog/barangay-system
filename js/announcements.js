@@ -67,7 +67,7 @@ function renderAnnouncements(announcements) {
                         </div>
                         <h3 style="margin: 0 0 var(--spacing-xs) 0; color: var(--text-primary);">${announcement.title}</h3>
                         <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
-                            ${new Date(announcement.createdAt).toLocaleString()}
+                            ${formatDateTime(announcement.createdAt)}
                         </p>
                     </div>
                     ${announcement.icon ? `<div style="font-size: 2rem;">${announcement.icon}</div>` : ''}
@@ -95,7 +95,7 @@ function renderAnnouncements(announcements) {
                             <line x1="8" y1="2" x2="8" y2="6"></line>
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        ${new Date(announcement.eventDate).toLocaleDateString()}
+                        ${formatDate(announcement.eventDate)}
                     </div>
                 ` : ''}
             </div>
@@ -325,7 +325,7 @@ function renderAdminAnnouncements(announcements) {
                         </div>
                         <h3 style="margin: 0 0 var(--spacing-xs) 0; color: var(--text-primary);">${announcement.title}</h3>
                         <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary);">
-                            ${new Date(announcement.createdAt).toLocaleString()}
+                            ${formatDateTime(announcement.createdAt || new Date())}
                         </p>
                     </div>
                     ${announcement.icon ? `<div style="font-size: 2rem;">${announcement.icon}</div>` : ''}
@@ -353,7 +353,7 @@ function renderAdminAnnouncements(announcements) {
                             <line x1="8" y1="2" x2="8" y2="6"></line>
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        ${new Date(announcement.eventDate).toLocaleDateString()}
+                        ${formatDate(announcement.eventDate)}
                     </div>
                 ` : ''}
                 
