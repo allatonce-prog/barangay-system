@@ -366,7 +366,7 @@ async function viewAdminRequestDetails(requestId) {
                 <div style="margin-bottom: var(--spacing-lg);">
                     <h4 style="margin-bottom: var(--spacing-md);">Update Status</h4>
                     <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
-                        <button class="btn btn-success" onclick="updateRequestStatus('${request.id}', 'completed')">
+                        <button class="btn btn-secondary" onclick="updateRequestStatus('${request.id}', 'completed')">
                             Mark as Completed
                         </button>
                         <button class="btn btn-danger" onclick="showRejectModal('${request.id}')">
