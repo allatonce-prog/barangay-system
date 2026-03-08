@@ -135,12 +135,23 @@ function setupEventListeners() {
         logoutBtn.addEventListener('click', handleLogout);
     }
 
+    // Digital ID button
+    const digitalIdBtn = document.getElementById('digitalIdBtn');
+    if (digitalIdBtn) {
+        digitalIdBtn.addEventListener('click', () => {
+            showDigitalIdModal();
+            document.getElementById('userMenu').style.display = 'none';
+        });
+    }
+
     // Navigation items
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
         item.addEventListener('click', () => {
             const page = item.getAttribute('data-page');
-            navigateToPage(page);
+            if (page) {
+                navigateToPage(page);
+            }
         });
     });
 
@@ -154,6 +165,15 @@ function setupEventListeners() {
             } else {
                 console.error('showNotifications function not found');
             }
+        });
+    }
+
+    // Navigation Scan Button
+    const navScanBtn = document.getElementById('navScanBtn');
+    if (navScanBtn) {
+        navScanBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showScannerModal();
         });
     }
 
@@ -293,12 +313,14 @@ async function handleSimpleRequest(event) {
 // ========================================
 
 async function navigateToPage(page) {
+    if (!page) return;
     console.log('Navigating to:', page);
 
     // Update active nav item
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
-        if (item.getAttribute('data-page') === page) {
+        const itemPage = item.getAttribute('data-page');
+        if (itemPage && itemPage === page) {
             item.classList.add('active');
         }
     });
@@ -980,6 +1002,465 @@ function handleHardReset() {
 
 window.showSettingsModal = showSettingsModal;
 window.handleHardReset = handleHardReset;
+
+// ========================================
+// DIGITAL ID MODAL
+// ========================================
+
+function showDigitalIdModal() {
+    const user = AppState.currentUser;
+    const profileImg = user.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=random`;
+    const idNumber = `BG1-${user.id.substring(0, 8).toUpperCase()}`;
+
+    const modal = createModal('Digital Barangay ID', `
+        <div class="id-card-container">
+            <div class="id-card-inner" id="idCard">
+                <!-- Front of Card -->
+                <div class="id-card-front">
+                    <div class="id-card-logo">
+                        <img src="logo/BARANGAY.png" alt="Logo">
+                        <span>PANTUKAN</span>
+                    </div>
+                    
+                    <div class="id-card-content">
+                        <img src="${profileImg}" class="id-photo" alt="Photo">
+                        <div class="id-details">
+                            <h2>${user.fullName}</h2>
+                            <p>${idNumber}</p>
+                            <div class="id-tag">${user.role === 'admin' ? 'OFFICIAL' : 'RESIDENT'}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 0.55rem; opacity: 0.7; text-align: right; letter-spacing: 0.5px;">
+                        VALID UNTIL: 12/2026
+                    </div>
+                </div>
+
+                <!-- Back of Card -->
+                <div class="id-card-back">
+                    <div class="qr-view-container" id="qrCodeContainer"></div>
+                    <p class="qr-label">Scan to verify residency</p>
+                    <div style="font-size: 0.5rem; text-align: center; opacity: 0.6; padding: 0 1rem; margin-top: 5px;">
+                        This digital ID is a valid proof of residency. Present for verification.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
+            <p>Tap card to flip</p>
+            <button class="btn btn-primary" style="margin-top: 1rem; width: 100%;" onclick="downloadDigitalId()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Save to Device
+            </button>
+        </div>
+    `, []);
+
+    showModal(modal);
+
+    // Add flip logic
+    const card = document.getElementById('idCard');
+    if (card) {
+        card.addEventListener('click', () => {
+            card.classList.toggle('is-flipped');
+        });
+    }
+
+    // Generate QR Code
+    setTimeout(() => {
+        const qrContainer = document.getElementById('qrCodeContainer');
+        if (qrContainer) {
+            new QRCode(qrContainer, {
+                text: JSON.stringify({
+                    id: user.id,
+                    type: 'verification',
+                    version: '1.0'
+                }),
+                width: 110,
+                height: 110,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+    }, 100);
+}
+
+async function downloadDigitalId() {
+    const cardFront = document.querySelector('.id-card-front');
+    if (!cardFront) {
+        showToast('ID card not found!', 'error');
+        return;
+    }
+
+    try {
+        showToast('Preparing ID for download...', 'info');
+
+        // Snapshot the front of the card with optimizations
+        const canvas = await html2canvas(cardFront, {
+            scale: 3, // Ultra-high quality
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: null,
+            logging: false,
+            onclone: (clonedDoc) => {
+                // Fix: html2canvas does not support backdrop-filter
+                const clonedCard = clonedDoc.querySelector('.id-card-front');
+                if (clonedCard) {
+                    clonedCard.style.backdropFilter = 'none';
+                    clonedCard.style.webkitBackdropFilter = 'none';
+                    // Re-apply a solid fallback that looks identical
+                    clonedCard.style.background = 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)';
+                }
+            }
+        });
+
+        const image = canvas.toDataURL("image/png", 1.0);
+        const filename = `BrgyONE_ID_${AppState.currentUser.fullName.replace(/\s+/g, '_')}.png`;
+
+        // Check if we are on a mobile device
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0);
+
+        if (isMobile && navigator.share && navigator.canShare) {
+            try {
+                const response = await fetch(image);
+                const blob = await response.blob();
+                const file = new File([blob], filename, { type: 'image/png' });
+
+                if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Barangay Digital ID',
+                        text: 'My official Digital ID from BrgyONE.'
+                    });
+                    showToast('Shared successfully!', 'success');
+                    return;
+                }
+            } catch (shareErr) {
+                console.log('Mobile share failed, falling back to direct download');
+            }
+        }
+
+        // DIRECT AUTOMATIC DOWNLOAD (Ideal for PC)
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
+            document.body.removeChild(link);
+            showToast('ID saved to your Downloads!', 'success');
+        }, 100);
+
+    } catch (err) {
+        console.error('Error saving ID:', err);
+        showToast('Failed to generate ID image.', 'error');
+    }
+}
+
+window.showDigitalIdModal = showDigitalIdModal;
+
+window.downloadDigitalId = downloadDigitalId;
+
+// ========================================
+// QR SCANNER & VERIFICATION (GLOBAL)
+// ========================================
+
+let html5QrScanner = null;
+
+function showScannerModal() {
+    const modal = createModal('Verify Digital ID', `
+        <div class="scanner-modal-container">
+            <div class="scanner-tabs">
+                <button class="scanner-tab active" onclick="switchScannerTab(this, 'scan')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span>Scan</span>
+                </button>
+                <button class="scanner-tab" onclick="switchScannerTab(this, 'upload')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span>Upload</span>
+                </button>
+                <button class="scanner-tab" onclick="switchScannerTab(this, 'myqr')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+                    <span>My QR</span>
+                </button>
+            </div>
+
+            <div id="scanTabContent" class="tab-content active">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">Position the resident's QR code in the frame</p>
+                <div id="reader" style="width: 100%; max-width: 320px; margin: 0 auto; border-radius: 1.25rem; overflow: hidden; border: 2px solid var(--primary-color); background: #000;"></div>
+            </div>
+
+            <div id="uploadTabContent" class="tab-content">
+                <div class="upload-area" onclick="document.getElementById('qrFileInput').click()">
+                    <div class="upload-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                    </div>
+                    <p style="margin-top: 1rem; font-weight: 700; color: var(--text-primary);">Choose from Gallery</p>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">Select an image with a QR code</p>
+                    <input type="file" id="qrFileInput" accept="image/*" style="display: none;" onchange="handleQrFileUpload(this)">
+                </div>
+            </div>
+
+            <div id="myqrTabContent" class="tab-content">
+                <div class="my-qr-tab-content">
+                    <div class="my-qr-container">
+                        <div id="myQrCodeDisplay"></div>
+                    </div>
+                    <div class="my-qr-info">
+                        <h4 id="myQrName">Member Name</h4>
+                        <p id="myQrId">ID: BRGY-001</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="scannerFeedback" style="margin-top: 1rem; font-weight: 500; font-size: 0.85rem; min-height: 20px;"></div>
+            <button class="btn btn-outline btn-block" onclick="stopScannerAndClose()" style="margin-top: 1.5rem; border-radius: 1rem;">Cancel</button>
+        </div>
+    `, []);
+
+    showModal(modal);
+
+    setTimeout(() => {
+        startQrCamera();
+    }, 400);
+}
+
+function generateMyQrCode() {
+    const user = AppState.currentUser;
+    if (!user) return;
+
+    const qrContainer = document.getElementById('myQrCodeDisplay');
+    const nameDisplay = document.getElementById('myQrName');
+    const idDisplay = document.getElementById('myQrId');
+
+    if (qrContainer) qrContainer.innerHTML = '';
+    if (nameDisplay) nameDisplay.textContent = user.fullName;
+    if (idDisplay) idDisplay.textContent = `ID: BG1-${user.id.substring(0, 8).toUpperCase()}`;
+
+    // Verification data for the QR code
+    const verificationData = JSON.stringify({
+        type: 'verification',
+        id: user.id
+    });
+
+    if (qrContainer) {
+        new QRCode(qrContainer, {
+            text: verificationData,
+            width: 200,
+            height: 200,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    }
+}
+
+function startQrCamera() {
+    const readerDiv = document.getElementById('reader');
+    if (!readerDiv) return;
+
+    // Reset previous instance if any
+    if (html5QrScanner) {
+        try {
+            html5QrScanner.clear();
+        } catch (e) { }
+        html5QrScanner = null;
+    }
+
+    html5QrScanner = new Html5Qrcode("reader");
+    const config = { fps: 15, qrbox: { width: 220, height: 220 } };
+
+    html5QrScanner.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => {
+            handleScanResult(decodedText);
+        },
+        (errorMessage) => { }
+    ).catch(err => {
+        console.error("Scanner error:", err);
+        const feedback = document.getElementById('scannerFeedback');
+        if (feedback) feedback.innerHTML = `<span style="color: var(--error-color);">Camera failed. You can still use the <b>Upload QR</b> option.</span>`;
+    });
+}
+
+async function switchScannerTab(btn, tab) {
+    console.log('Switching to scanner tab:', tab);
+
+    // Stop camera if switching to upload or if already running
+    if (html5QrScanner) {
+        try {
+            if (html5QrScanner.isScanning) {
+                await html5QrScanner.stop();
+            }
+            html5QrScanner.clear();
+            html5QrScanner = null;
+        } catch (e) {
+            console.log('Error stopping scanner:', e);
+            html5QrScanner = null;
+        }
+    }
+
+    if (tab === 'scan') {
+        startQrCamera();
+    } else if (tab === 'myqr') {
+        generateMyQrCode();
+    }
+
+    // Toggle Tab Buttons
+    document.querySelectorAll('.scanner-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    // Toggle Content
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    const content = document.getElementById(`${tab}TabContent`);
+    if (content) content.classList.add('active');
+
+    // Clear feedback
+    const feedback = document.getElementById('scannerFeedback');
+    if (feedback) feedback.innerHTML = '';
+}
+
+async function handleQrFileUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    const feedback = document.getElementById('scannerFeedback');
+    feedback.innerHTML = '<span style="color: var(--primary-color);">Reading QR...</span>';
+
+    try {
+        const tempReader = new Html5Qrcode("reader");
+        const result = await tempReader.scanImage(input.files[0], true);
+        handleScanResult(result);
+    } catch (err) {
+        feedback.innerHTML = '<span style="color: var(--error-color);">No QR code detected in this photo.</span>';
+    }
+}
+
+async function stopScannerAndClose() {
+    if (html5QrScanner) {
+        try {
+            if (html5QrScanner.isScanning) {
+                await html5QrScanner.stop();
+            }
+            html5QrScanner.clear();
+        } catch (e) {
+            console.log('Final stop error:', e);
+        }
+        html5QrScanner = null;
+    }
+    closeModal();
+}
+
+async function handleScanResult(decodedText) {
+    try {
+        const data = JSON.parse(decodedText);
+        if (data.type === 'verification' && data.id) {
+            if (html5QrScanner) {
+                await html5QrScanner.stop();
+                html5QrScanner = null;
+            }
+            closeModal();
+            showToast('Verifying ID...', 'success');
+            setTimeout(() => {
+                verifyResidentData(data.id);
+            }, 300);
+        } else {
+            const feedback = document.getElementById('scannerFeedback');
+            if (feedback) feedback.innerHTML = `<span style="color: var(--warning-color);">Invalid ID format</span>`;
+        }
+    } catch (e) {
+        const feedback = document.getElementById('scannerFeedback');
+        if (feedback) feedback.innerHTML = `<span style="color: var(--error-color);">Invalid QR code</span>`;
+    }
+}
+
+async function verifyResidentData(userId) {
+    try {
+        const result = await DB.getData('RESIDENTS', userId);
+        if (!result.success || !result.data) {
+            showToast('ID not found in our records!', 'error');
+            return;
+        }
+
+        const res = result.data;
+        const profileImg = res.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(res.fullName)}&background=random`;
+
+        // Fetch activity if admin, otherwise hide sensitive info
+        const isAdmin = AppState.currentUser?.role === 'admin';
+        let userRequests = [];
+        if (isAdmin) {
+            const requestsResult = await DB.getAllData('REQUESTS');
+            userRequests = requestsResult.success ? requestsResult.data.filter(r => r.userId === userId) : [];
+        }
+
+        const modal = createModal('Verified BrgyONE Resident', `
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="width: 110px; height: 110px; border-radius: 50%; margin: 0 auto 15px; overflow: hidden; border: 4px solid var(--success-color); box-shadow: 0 8px 16px rgba(16, 185, 129, 0.2);">
+                    <img src="${profileImg}" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <h2 style="margin: 0; color: var(--text-primary); font-size: 1.5rem;">${res.fullName}</h2>
+                <div style="display: flex; gap: 6px; justify-content: center; margin-top: 10px;">
+                    <span class="badge badge-success" style="padding: 6px 12px; font-size: 0.75rem;">Verified Member</span>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 1.25rem; margin-bottom: 1.25rem; border: 1px solid var(--border-color);">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 0.75rem; text-align: left; font-size: 0.9rem;">
+                    <div>
+                        <p style="color: var(--text-secondary); margin-bottom: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Resident ID</p>
+                        <p style="font-weight: 700; margin: 0; color: var(--primary-color); font-family: monospace;">BG1-${userId.substring(0, 8).toUpperCase()}</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--text-secondary); margin-bottom: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Status</p>
+                        <p style="font-weight: 600; margin: 0;">Active Member</p>
+                    </div>
+                </div>
+            </div>
+
+            ${isAdmin ? `
+                <div style="text-align: left;">
+                    <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; font-weight: 700;">Resident Activity</h4>
+                    <div style="max-height: 180px; overflow-y: auto;">
+                        ${userRequests.length === 0 ? '<p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center; padding: 1rem;">No history found.</p>' :
+                    userRequests.slice(0, 5).sort((a, b) => b.createdAt - a.createdAt).map(req => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+                                    <div>
+                                        <p style="font-size: 0.85rem; font-weight: 600; margin: 0;">${req.documentType}</p>
+                                        <p style="font-size: 0.7rem; color: var(--text-secondary); margin: 0;">${new Date(req.createdAt).toLocaleDateString()}</p>
+                                    </div>
+                                    <span class="badge badge-${req.status}" style="font-size: 0.65rem;">${req.status}</span>
+                                </div>
+                            `).join('')
+                }
+                    </div>
+                </div>
+            ` : `
+                <div style="text-align: center; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.75rem; border: 1px dashed var(--success-color);">
+                    <p style="color: var(--success-color); font-size: 0.8rem; font-weight: 600; margin: 0;">Community Verified Identity</p>
+                </div>
+            `}
+
+            <button class="btn btn-primary btn-block" onclick="closeModal()" style="margin-top: 1.5rem;">Finish Verification</button>
+        `, []);
+
+        showModal(modal);
+    } catch (error) {
+        console.error('Verification error:', error);
+        showToast('Error verifying ID.', 'error');
+    }
+}
+
+window.showScannerModal = showScannerModal;
+window.stopScannerAndClose = stopScannerAndClose;
+window.handleScanResult = handleScanResult;
+window.verifyResidentData = verifyResidentData;
 
 // CROPPER VARIABLES
 let cropperInstance = null;

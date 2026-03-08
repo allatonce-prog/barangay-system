@@ -98,6 +98,17 @@
                 </svg>
                 Profile
             </button>
+            <button class="menu-item" id="digitalIdBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <circle cx="9" cy="10" r="2" />
+                    <line x1="15" y1="8" x2="17" y2="8" />
+                    <line x1="15" y1="12" x2="17" y2="12" />
+                    <line x1="15" y1="16" x2="17" y2="16" />
+                </svg>
+                Digital ID
+            </button>
             <button class="menu-item" id="settingsBtn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2">
@@ -233,6 +244,19 @@
                 </svg>
                 <span>Announcements</span>
             </button>
+            <button class="nav-item scanner-nav-item" id="navScanBtn">
+                <div class="scan-btn-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                        <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                        <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                        <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                        <rect x="7" y="7" width="10" height="10" />
+                    </svg>
+                </div>
+                <span>Scan</span>
+            </button>
             <button class="nav-item" data-page="requests">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2">
@@ -337,7 +361,16 @@
 
     <!-- Login Screen -->
     <div id="loginScreen" class="login-screen">
-        <!-- Municipality Logo -->
+        <!-- About Link -->
+        <a href="about.html" class="info-link" title="About BrgyONE">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+        </a>
+
         <!-- Municipality Logo -->
         <div class="logo-wrapper">
             <img src="logo/logo.jpg" alt="Municipality Logo" class="logo-swap">
@@ -453,6 +486,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <!-- QR & Capture Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Scripts -->
     <script src="js/version.js"></script>
