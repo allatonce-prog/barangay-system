@@ -323,10 +323,21 @@ async function viewAdminRequestDetails(requestId) {
             
             <div style="background: var(--bg-secondary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
                 <div style="margin-bottom: var(--spacing-sm);">
-                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Resident:</strong>
-                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.userName}</p>
+                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Resident Name:</strong>
+                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.userName || (request.firstName + ' ' + request.lastName)}</p>
                 </div>
                 
+                <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
+                    <div style="flex: 1;">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Phone:</strong>
+                        <p style="margin: var(--spacing-xs) 0 0 0;">${request.phone || 'N/A'}</p>
+                    </div>
+                    <div style="flex: 1;">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Address:</strong>
+                        <p style="margin: var(--spacing-xs) 0 0 0;">${request.address || 'N/A'}</p>
+                    </div>
+                </div>
+
                 <div style="margin-bottom: var(--spacing-sm);">
                     <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Purpose:</strong>
                     <p style="margin: var(--spacing-xs) 0 0 0;">${request.purpose}</p>
@@ -349,14 +360,20 @@ async function viewAdminRequestDetails(requestId) {
                     <p style="margin: var(--spacing-xs) 0 0 0;">${formatDateTime(request.createdAt)}</p>
                 </div>
                 
-                ${request.files && request.files.length > 0 ? `
-                    <div>
-                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Attached Files:</strong>
-                        <ul style="margin: var(--spacing-xs) 0 0 0; padding-left: var(--spacing-lg);">
-                            ${request.files.map(file => `<li>${file}</li>`).join('')}
-                        </ul>
+                <!-- Valid ID Display -->
+                ${request.validIdImageUrl ? `
+                    <div style="margin-top: var(--spacing-md);">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Valid ID Submitted:</strong>
+                        <div style="margin-top: var(--spacing-xs); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-tertiary);">
+                            <img src="${request.validIdImageUrl}" alt="Valid ID" style="width: 100%; max-height: 300px; object-fit: contain; cursor: pointer;" onclick="window.open('${request.validIdImageUrl}', '_blank')">
+                            <div style="padding: 8px; text-align: center; border-top: 1px solid var(--border-color);">
+                                <a href="${request.validIdImageUrl}" target="_blank" style="font-size: var(--font-size-xs); color: var(--primary-color); text-decoration: none; font-weight: 600;">View Full Size ID</a>
+                            </div>
+                        </div>
                     </div>
-                ` : ''}
+                ` : `
+                    <p style="color: var(--danger-color); font-size: var(--font-size-sm); margin-top: var(--spacing-sm);">⚠️ No Valid ID attached to this request</p>
+                `}
             </div>
             
             ${request.status === 'pending' ? `

@@ -76,7 +76,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
 document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const fullName = document.getElementById('regFullName').value.trim();
+    const firstName = document.getElementById('regFirstName').value.trim();
+    const lastName = document.getElementById('regLastName').value.trim();
+    const phone = document.getElementById('regPhone').value.trim();
+    const dob = document.getElementById('regDOB').value;
+    const fullName = `${firstName} ${lastName}`;
     const username = document.getElementById('regUsername').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const address = document.getElementById('regAddress').value.trim();
@@ -84,7 +88,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     const confirmPassword = document.getElementById('regConfirmPassword').value;
 
     // Validation
-    if (!fullName || !username || !email || !address || !password || !confirmPassword) {
+    if (!firstName || !lastName || !phone || !dob || !username || !email || !address || !password || !confirmPassword) {
         showToast('Please fill in all fields', 'error');
         return;
     }
@@ -116,6 +120,10 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
         // Register user in local database
         const result = await DB.registerUser({
             fullName,
+            firstName,
+            lastName,
+            phone,
+            dob,
             username,
             email,
             address,

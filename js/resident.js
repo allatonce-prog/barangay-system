@@ -20,8 +20,30 @@ window.DOCUMENT_TYPES = DOCUMENT_TYPES;
 // ========================================
 
 function showNewRequestModal() {
+    const user = AppState.currentUser || {};
     const modal = createModal('New Document Request', `
         <form id="newRequestForm" onsubmit="handleNewRequest(event)">
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="reqFirstName">First Name *</label>
+                    <input type="text" id="reqFirstName" value="${user.firstName || ''}" required placeholder="First Name">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="reqLastName">Last Name *</label>
+                    <input type="text" id="reqLastName" value="${user.lastName || ''}" required placeholder="Last Name">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="reqAddress">Address *</label>
+                <input type="text" id="reqAddress" value="${user.address || ''}" required placeholder="Your full address">
+            </div>
+            
+            <div class="form-group">
+                <label for="reqPhone">Phone Number *</label>
+                <input type="tel" id="reqPhone" value="${user.phone || ''}" required placeholder="09xxxxxxxxx">
+            </div>
+
             <div class="form-group">
                 <label for="documentType">Document Type *</label>
                 <select id="documentType" required>
@@ -45,6 +67,21 @@ function showNewRequestModal() {
                 <textarea id="additionalInfo" placeholder="Any additional details or special requests"></textarea>
             </div>
             
+            <div class="form-group">
+                <label for="validId">Valid ID Image * (Required)</label>
+                <div class="file-upload">
+                    <input type="file" id="validId" accept="image/*" required onchange="handleFileSelect(event)">
+                    <div class="file-upload-label" id="fileList">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Click to upload Valid ID</span>
+                    </div>
+                </div>
+            </div>
+            
             <div style="background: var(--bg-secondary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-top: var(--spacing-md);">
                 <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin: 0;">
                     You will receive a notification about your request status
@@ -53,7 +90,7 @@ function showNewRequestModal() {
             
             <div class="modal-footer" style="border: none; padding: var(--spacing-lg) 0 0 0;">
                 <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Submit Request</button>
+                <button type="submit" class="btn btn-primary" id="submitReqBtn">Submit Request</button>
             </div>
         </form>
     `, []);
@@ -103,35 +140,60 @@ function formatFileSize(bytes) {
 async function handleNewRequest(event) {
     event.preventDefault();
 
+    const firstName = document.getElementById('reqFirstName').value.trim();
+    const lastName = document.getElementById('reqLastName').value.trim();
+    const address = document.getElementById('reqAddress').value.trim();
+    const phone = document.getElementById('reqPhone').value.trim();
     const documentType = document.getElementById('documentType').value;
     const purpose = document.getElementById('purpose').value.trim();
     const quantity = parseInt(document.getElementById('quantity').value);
     const additionalInfo = document.getElementById('additionalInfo').value.trim();
+    const idFile = document.getElementById('validId').files[0];
 
     // Validate
-    if (!documentType || !purpose) {
+    if (!firstName || !lastName || !address || !phone || !documentType || !purpose) {
         showToast('Please fill in all required fields', 'error');
         return;
     }
 
+    if (!idFile) {
+        showToast('Valid ID image is required', 'error');
+        return;
+    }
+
+    // Show loading state
+    const submitBtn = document.getElementById('submitReqBtn');
+    const originalBtnText = submitBtn.textContent;
+    submitBtn.textContent = 'Uploading ID...';
+    submitBtn.disabled = true;
+
     try {
-        // Generate tracking number (async function)
+        // Upload ID to Cloudinary
+        const idImageUrl = await uploadToCloudinary(idFile);
+
+        submitBtn.textContent = 'Submitting...';
+
+        // Generate tracking number
         const trackingNumber = await generateTrackingNumber();
 
         // Create request object
         const request = {
             trackingNumber: trackingNumber,
             userId: AppState.currentUser.id,
-            userName: AppState.currentUser.fullName,
+            userName: `${firstName} ${lastName}`,
+            firstName,
+            lastName,
+            address,
+            phone,
             documentType,
             purpose,
             quantity,
             additionalInfo,
-            files: selectedFiles.map(f => f.name), // In production, upload files to server
+            validIdImageUrl: idImageUrl,
             timeline: [
                 {
                     status: 'pending',
-                    message: 'Request submitted',
+                    message: 'Request submitted with Valid ID',
                     timestamp: new Date().toISOString()
                 }
             ]
@@ -223,6 +285,23 @@ async function viewRequestDetails(requestId) {
             
             <div style="background: var(--bg-secondary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
                 <div style="margin-bottom: var(--spacing-sm);">
+                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Requester Name:</strong>
+                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.userName || (request.firstName + ' ' + request.lastName)}</p>
+                </div>
+
+                <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
+                    <div style="flex: 1;">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Phone:</strong>
+                        <p style="margin: var(--spacing-xs) 0 0 0;">${request.phone || 'N/A'}</p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: var(--spacing-sm);">
+                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Address:</strong>
+                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.address || 'N/A'}</p>
+                </div>
+                
+                <div style="margin-bottom: var(--spacing-sm);">
                     <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Purpose:</strong>
                     <p style="margin: var(--spacing-xs) 0 0 0;">${request.purpose}</p>
                 </div>
@@ -244,12 +323,12 @@ async function viewRequestDetails(requestId) {
                     <p style="margin: var(--spacing-xs) 0 0 0;">${formatDateTime(request.createdAt)}</p>
                 </div>
                 
-                ${request.files && request.files.length > 0 ? `
-                    <div>
-                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Attached Files:</strong>
-                        <ul style="margin: var(--spacing-xs) 0 0 0; padding-left: var(--spacing-lg);">
-                            ${request.files.map(file => `<li>${file}</li>`).join('')}
-                        </ul>
+                ${request.validIdImageUrl ? `
+                    <div style="margin-top: var(--spacing-md);">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Valid ID Attached:</strong>
+                        <div style="margin-top: var(--spacing-xs); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-tertiary);">
+                            <img src="${request.validIdImageUrl}" alt="Valid ID" style="width: 100%; max-height: 200px; object-fit: contain;">
+                        </div>
                     </div>
                 ` : ''}
             </div>

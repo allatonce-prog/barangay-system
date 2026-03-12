@@ -78,6 +78,10 @@ async function registerUser(userData) {
             email: userData.email,
             password: btoa(userData.password), // Simple encoding (use proper hashing in production)
             fullName: userData.fullName,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            phone: userData.phone,
+            dob: userData.dob,
             address: userData.address,
             role: userData.role || 'resident',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()

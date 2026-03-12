@@ -906,9 +906,23 @@ function showProfileModal() {
                 <input type="file" id="profileImageInput" accept="image/*" style="display: none;" onchange="previewProfileImage(this)">
             </div>
 
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="profileFirstName">First Name</label>
+                    <input type="text" id="profileFirstName" value="${AppState.currentUser.firstName || ''}" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="profileLastName">Last Name</label>
+                    <input type="text" id="profileLastName" value="${AppState.currentUser.lastName || ''}" required>
+                </div>
+            </div>
             <div class="form-group">
-                <label for="profileFullName">Full Name</label>
-                <input type="text" id="profileFullName" value="${AppState.currentUser.fullName}" required>
+                <label for="profilePhone">Phone No.</label>
+                <input type="tel" id="profilePhone" value="${AppState.currentUser.phone || ''}" required>
+            </div>
+            <div class="form-group">
+                <label for="profileDOB">Date of birth</label>
+                <input type="date" id="profileDOB" value="${AppState.currentUser.dob || ''}" required>
             </div>
             <div class="form-group">
                 <label for="profileUsername">Username</label>
@@ -1551,17 +1565,22 @@ window.confirmCrop = confirmCrop;
 async function handleProfileUpdate(event) {
     event.preventDefault();
 
-    const fullName = document.getElementById('profileFullName').value.trim();
+    const firstName = document.getElementById('profileFirstName').value.trim();
+    const lastName = document.getElementById('profileLastName').value.trim();
+    const phone = document.getElementById('profilePhone').value.trim();
+    const dob = document.getElementById('profileDOB').value.trim();
     const username = document.getElementById('profileUsername').value.trim();
     const email = document.getElementById('profileEmail').value.trim();
     const address = document.getElementById('profileAddress').value.trim();
     const fileInput = document.getElementById('profileImageInput');
 
     // Validate inputs
-    if (!fullName || !username || !email || !address) {
+    if (!firstName || !lastName || !username || !email || !address) {
         showToast('All fields are required', 'error');
         return;
     }
+
+    const fullName = `${firstName} ${lastName}`;
 
     try {
         showToast('Saving profile...', 'info');
@@ -1569,10 +1588,8 @@ async function handleProfileUpdate(event) {
         let profileImageUrl = AppState.currentUser.profileImage;
 
         // Upload image if selected
-        // Check for cropped blob first
         if (window.currentCroppedBlob) {
             try {
-                // Upload the blob
                 const file = new File([window.currentCroppedBlob], "profile_cropped.jpg", { type: "image/jpeg" });
                 profileImageUrl = await uploadToCloudinary(file);
             } catch (uploadError) {
@@ -1581,7 +1598,6 @@ async function handleProfileUpdate(event) {
                 return;
             }
         }
-        // Fallback to original file input if no crop happened
         else if (fileInput.files.length > 0) {
             try {
                 profileImageUrl = await uploadToCloudinary(fileInput.files[0]);
@@ -1593,7 +1609,11 @@ async function handleProfileUpdate(event) {
         }
 
         const updates = {
+            firstName,
+            lastName,
             fullName,
+            phone,
+            dob,
             username,
             email,
             address,
