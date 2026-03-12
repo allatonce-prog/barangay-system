@@ -586,12 +586,16 @@ async function loadRequestsPage(container) {
                 New Request
             </button>
         </div>
-        
-        <div class="card">
-            <div class="card-body">
-                <div id="requestsList"></div>
-            </div>
+
+        <!-- Resident Status Filter Tabs -->
+        <div style="display: flex; overflow-x: auto; border-bottom: 2px solid var(--border-color); margin-bottom: 1rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 0 5px;">
+            <button class="resident-status-tab active" data-status="all" onclick="filterResidentRequests(this, 'all')" style="padding: 12px 16px; border: none; background: transparent; font-weight: 600; font-size: 0.85rem; color: var(--primary-color); border-bottom: 3px solid var(--primary-color); margin-bottom: -2px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">All</button>
+            <button class="resident-status-tab" data-status="pending" onclick="filterResidentRequests(this, 'pending')" style="padding: 12px 16px; border: none; background: transparent; font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">Pending</button>
+            <button class="resident-status-tab" data-status="ongoing" onclick="filterResidentRequests(this, 'ongoing')" style="padding: 12px 16px; border: none; background: transparent; font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">Ongoing</button>
+            <button class="resident-status-tab" data-status="completed" onclick="filterResidentRequests(this, 'completed')" style="padding: 12px 16px; border: none; background: transparent; font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">Completed</button>
         </div>
+        
+        <div id="requestsList"></div>
     `;
 
     await displayUserRequests();
@@ -602,7 +606,7 @@ async function loadRequestsPage(container) {
     }, 100);
 }
 
-async function displayUserRequests() {
+async function displayUserRequests(statusFilter = 'all') {
     console.log('[App] Displaying user requests...');
     const requestsList = document.getElementById('requestsList');
 
@@ -612,8 +616,17 @@ async function displayUserRequests() {
     }
 
     try {
-        const userRequests = await getUserRequests();
+        let userRequests = await getUserRequests();
         console.log('[App] User requests:', userRequests);
+
+        // Apply filtering logic
+        if (statusFilter !== 'all') {
+            if (statusFilter === 'ongoing') {
+                userRequests = userRequests.filter(r => r.status === 'processing' || r.status === 'approved');
+            } else {
+                userRequests = userRequests.filter(r => r.status === statusFilter);
+            }
+        }
 
         if (userRequests.length === 0) {
             requestsList.innerHTML = `
@@ -658,6 +671,24 @@ async function displayUserRequests() {
         `;
     }
 }
+
+function filterResidentRequests(btn, status) {
+    // Update tab styles
+    document.querySelectorAll('.resident-status-tab').forEach(tab => {
+        tab.style.color = 'var(--text-secondary)';
+        tab.style.fontWeight = '500';
+        tab.style.borderBottom = '3px solid transparent';
+    });
+
+    btn.style.color = 'var(--primary-color)';
+    btn.style.fontWeight = '600';
+    btn.style.borderBottom = '3px solid var(--primary-color)';
+
+    // Refresh display with filter
+    displayUserRequests(status);
+}
+
+window.filterResidentRequests = filterResidentRequests;
 
 function loadTrackPage(container) {
     container.innerHTML = `

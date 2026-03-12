@@ -1,16 +1,26 @@
-// ========================================
-// RESIDENT MODULE - Document Requests
-// ========================================
-
-// Document types available for request
 const DOCUMENT_TYPES = [
     'Barangay Clearance',
     'Certificate of Residency',
     'Certificate of Indigency',
     'Cedula',
-    'Complaint Certificate',
     'Other'
 ];
+
+const DOCUMENT_REQUIREMENTS = {
+    'Barangay Clearance': [
+        { id: 'purok_clearance', label: 'Purok Clearance' },
+        { id: 'national_id', label: 'National ID' }
+    ],
+    'Certificate of Residency': [
+        { id: 'national_id', label: 'National ID' },
+        { id: 'barangay_clearance', label: 'Barangay Clearance' },
+        { id: 'purok_clearance', label: 'Purok Clearance' }
+    ],
+    'Certificate of Indigency': [
+        { id: 'purok_clearance', label: 'Purok Clearance' },
+        { id: 'national_id', label: 'National ID' }
+    ]
+};
 
 // Make globally available
 window.DOCUMENT_TYPES = DOCUMENT_TYPES;
@@ -55,11 +65,13 @@ function showNewRequestModal() {
 
             <div class="form-group">
                 <label for="documentType">Document Type *</label>
-                <select id="documentType" required>
+                <select id="documentType" required onchange="handleDocTypeChange(this.value)">
                     <option value="">Select document type</option>
                     ${DOCUMENT_TYPES.map(type => `<option value="${type}">${type}</option>`).join('')}
                 </select>
             </div>
+
+            <div id="requirementsContainer"></div>
             
             <div class="form-group">
                 <label for="purpose">Purpose *</label>
@@ -106,6 +118,51 @@ function showNewRequestModal() {
 
     showModal(modal);
 }
+
+function handleDocTypeChange(type) {
+    const container = document.getElementById('requirementsContainer');
+    if (!container) return;
+
+    const requirements = DOCUMENT_REQUIREMENTS[type] || [];
+    
+    if (requirements.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div style="margin: 1.5rem 0; padding: 1rem; background: rgba(37, 99, 235, 0.05); border-radius: 12px; border: 1px dashed var(--primary-color);">
+            <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Required Attachments for ${type}
+            </h4>
+            <div style="display: grid; gap: 1rem;">
+                ${requirements.map(req => `
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem; font-weight: 600;">${req.label} *</label>
+                        <div class="file-upload" style="padding: 10px;">
+                            <input type="file" id="req_${req.id}" accept="image/*" required onchange="handleRequirementFileSelect(event, '${req.id}')">
+                            <div class="file-upload-label" id="label_${req.id}" style="padding: 10px; min-height: auto;">
+                                <span style="font-size: 0.75rem;">Upload ${req.label}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function handleRequirementFileSelect(event, id) {
+    const file = event.target.files[0];
+    const label = document.getElementById(`label_${id}`);
+    if (file && label) {
+        label.innerHTML = `<span style="color: var(--success-color); font-weight: 600; font-size: 0.75rem;">✓ ${file.name}</span>`;
+    }
+}
+
+window.handleDocTypeChange = handleDocTypeChange;
+window.handleRequirementFileSelect = handleRequirementFileSelect;
 
 // ========================================
 // FILE UPLOAD HANDLER
@@ -178,8 +235,26 @@ async function handleNewRequest(event) {
     submitBtn.disabled = true;
 
     try {
-        // Upload ID to Cloudinary
+        const docType = document.getElementById('documentType').value;
+        const requirements = DOCUMENT_REQUIREMENTS[docType] || [];
+        const attachedRequirements = {};
+
+        // Upload main Valid ID
+        submitBtn.textContent = 'Uploading main ID...';
         const idImageUrl = await uploadToCloudinary(idFile);
+
+        // Upload specific requirements if any
+        for (const req of requirements) {
+            const fileInput = document.getElementById(`req_${req.id}`);
+            if (fileInput && fileInput.files[0]) {
+                submitBtn.textContent = `Uploading ${req.label}...`;
+                const url = await uploadToCloudinary(fileInput.files[0]);
+                attachedRequirements[req.id] = {
+                    label: req.label,
+                    url: url
+                };
+            }
+        }
 
         submitBtn.textContent = 'Submitting...';
 
@@ -201,10 +276,13 @@ async function handleNewRequest(event) {
             quantity,
             additionalInfo,
             validIdImageUrl: idImageUrl,
+            requirementsAttached: attachedRequirements,
+            createdAt: new Date().toISOString(),
+            status: 'pending',
             timeline: [
                 {
                     status: 'pending',
-                    message: 'Request submitted with Valid ID',
+                    message: 'Request submitted with all required documents',
                     timestamp: new Date().toISOString()
                 }
             ]
@@ -239,6 +317,9 @@ async function handleNewRequest(event) {
     } catch (error) {
         console.error('Submit request error:', error);
         showToast('Failed to submit request', 'error');
+    } finally {
+        submitBtn.textContent = originalBtnText;
+        submitBtn.disabled = false;
     }
 }
 
@@ -248,7 +329,7 @@ async function handleNewRequest(event) {
 
 async function generateTrackingNumber() {
     const year = new Date().getFullYear();
-    const result = await DB.getAllData('REQUESTS');
+    const result = await DB.getAllData('requests');
     const requests = result.success ? result.data : [];
     const count = requests.length + 1;
     return `REQ-${year}-${String(count).padStart(4, '0')}`;
@@ -261,7 +342,7 @@ async function generateTrackingNumber() {
 async function viewRequestDetails(requestId) {
     try {
         // Get request from database
-        const result = await DB.getData('REQUESTS', requestId);
+        const result = await DB.getData('requests', requestId);
 
         if (!result.success) {
             showToast('Request not found', 'error');
@@ -346,6 +427,23 @@ async function viewRequestDetails(requestId) {
                         </div>
                     </div>
                 ` : ''}
+
+                <!-- Specific Requirements Attached -->
+                ${request.requirementsAttached && Object.keys(request.requirementsAttached).length > 0 ? `
+                    <div style="margin-top: var(--spacing-md);">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Specific Requirements Attached:</strong>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--spacing-sm); margin-top: var(--spacing-xs);">
+                            ${Object.values(request.requirementsAttached).map(req => `
+                                <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-tertiary);">
+                                    <div style="padding: 4px 6px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); font-size: 0.65rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${req.label}
+                                    </div>
+                                    <img src="${req.url}" alt="${req.label}" style="width: 100%; height: 80px; object-fit: cover; cursor: pointer;" onclick="window.open('${req.url}', '_blank')">
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             </div>
             
             <div>
@@ -402,7 +500,7 @@ async function handleTrackRequest(event) {
     `;
 
     // Query database
-    const result = await DB.getAllData('REQUESTS');
+    const result = await DB.getAllData('requests');
     const requests = result.success ? result.data : [];
     const request = requests.find(r => r.trackingNumber === trackingNumber);
 

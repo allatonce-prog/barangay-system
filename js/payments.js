@@ -17,7 +17,6 @@ const DOCUMENT_FEES = {
     'Certificate of Indigency': 0, // Free
     'Cedula': 50,
     'Barangay ID': 100,
-    'Complaint Certificate': 50,
     'Other': 50
 };
 

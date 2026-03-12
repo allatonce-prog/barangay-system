@@ -379,6 +379,26 @@ async function viewAdminRequestDetails(requestId) {
                 ` : `
                     <p style="color: var(--danger-color); font-size: var(--font-size-sm); margin-top: var(--spacing-sm);">⚠️ No Valid ID attached to this request</p>
                 `}
+
+                <!-- Additional Requirements Display -->
+                ${request.requirementsAttached && Object.keys(request.requirementsAttached).length > 0 ? `
+                    <div style="margin-top: var(--spacing-md);">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Specific Requirements:</strong>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--spacing-sm); margin-top: var(--spacing-xs);">
+                            ${Object.values(request.requirementsAttached).map(req => `
+                                <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-tertiary);">
+                                    <div style="padding: 4px 8px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); font-size: 0.7rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${req.label}
+                                    </div>
+                                    <img src="${req.url}" alt="${req.label}" style="width: 100%; height: 100px; object-fit: cover; cursor: pointer;" onclick="window.open('${req.url}', '_blank')">
+                                    <div style="padding: 4px; text-align: center; border-top: 1px solid var(--border-color);">
+                                        <a href="${req.url}" target="_blank" style="font-size: 0.65rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">Full View</a>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             </div>
             
             ${request.status === 'pending' ? `

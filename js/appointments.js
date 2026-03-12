@@ -171,7 +171,7 @@ function handleAppointmentBooking(event) {
     createNotification({
         userId: AppState.currentUser.id,
         title: 'Appointment Booked',
-        message: `Your appointment with ${official.name} on ${formatDate(date)} at ${time} has been submitted for confirmation.`,
+        message: `Your appointment with ${official.name} on ${formatDateFull(date)} at ${time} has been submitted for confirmation.`,
         type: 'success',
         appointmentId: appointment.id
     });
@@ -196,7 +196,7 @@ function generateAppointmentReference() {
     return `APPT-${year}-${String(count).padStart(4, '0')}`;
 }
 
-function formatDate(dateString) {
+function formatDateFull(dateString) {
     return new Date(dateString).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -299,7 +299,7 @@ function viewAppointmentDetails(appointmentId) {
             
             <div style="margin-bottom: var(--spacing-sm);">
                 <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Date:</strong>
-                <p style="margin: var(--spacing-xs) 0 0 0;">${formatDate(appointment.date)}</p>
+                <p style="margin: var(--spacing-xs) 0 0 0;">${formatDateFull(appointment.date)}</p>
             </div>
             
             <div style="margin-bottom: var(--spacing-sm);">
