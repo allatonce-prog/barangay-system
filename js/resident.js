@@ -35,6 +35,15 @@ function showNewRequestModal() {
             </div>
             
             <div class="form-group">
+                <label for="reqGender">Gender *</label>
+                <select id="reqGender" required>
+                    <option value="Male" ${user.gender === 'Male' ? 'selected' : ''}>Male</option>
+                    <option value="Female" ${user.gender === 'Female' ? 'selected' : ''}>Female</option>
+                    <option value="Other" ${user.gender === 'Other' ? 'selected' : ''}>Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
                 <label for="reqAddress">Address *</label>
                 <input type="text" id="reqAddress" value="${user.address || ''}" required placeholder="Your full address">
             </div>
@@ -142,6 +151,7 @@ async function handleNewRequest(event) {
 
     const firstName = document.getElementById('reqFirstName').value.trim();
     const lastName = document.getElementById('reqLastName').value.trim();
+    const gender = document.getElementById('reqGender').value;
     const address = document.getElementById('reqAddress').value.trim();
     const phone = document.getElementById('reqPhone').value.trim();
     const documentType = document.getElementById('documentType').value;
@@ -151,7 +161,7 @@ async function handleNewRequest(event) {
     const idFile = document.getElementById('validId').files[0];
 
     // Validate
-    if (!firstName || !lastName || !address || !phone || !documentType || !purpose) {
+    if (!firstName || !lastName || !gender || !address || !phone || !documentType || !purpose) {
         showToast('Please fill in all required fields', 'error');
         return;
     }
@@ -183,6 +193,7 @@ async function handleNewRequest(event) {
             userName: `${firstName} ${lastName}`,
             firstName,
             lastName,
+            gender,
             address,
             phone,
             documentType,
@@ -293,6 +304,10 @@ async function viewRequestDetails(requestId) {
                     <div style="flex: 1;">
                         <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Phone:</strong>
                         <p style="margin: var(--spacing-xs) 0 0 0;">${request.phone || 'N/A'}</p>
+                    </div>
+                    <div style="flex: 1;">
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Gender:</strong>
+                        <p style="margin: var(--spacing-xs) 0 0 0;">${request.gender || 'N/A'}</p>
                     </div>
                 </div>
 

@@ -80,6 +80,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     const lastName = document.getElementById('regLastName').value.trim();
     const phone = document.getElementById('regPhone').value.trim();
     const dob = document.getElementById('regDOB').value;
+    const gender = document.getElementById('regGender').value;
     const fullName = `${firstName} ${lastName}`;
     const username = document.getElementById('regUsername').value.trim();
     const email = document.getElementById('regEmail').value.trim();
@@ -88,7 +89,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     const confirmPassword = document.getElementById('regConfirmPassword').value;
 
     // Validation
-    if (!firstName || !lastName || !phone || !dob || !username || !email || !address || !password || !confirmPassword) {
+    if (!firstName || !lastName || !phone || !dob || !gender || !username || !email || !address || !password || !confirmPassword) {
         showToast('Please fill in all fields', 'error');
         return;
     }
@@ -124,6 +125,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
             lastName,
             phone,
             dob,
+            gender,
             username,
             email,
             address,

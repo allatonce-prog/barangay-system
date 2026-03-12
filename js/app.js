@@ -925,6 +925,14 @@ function showProfileModal() {
                 <input type="date" id="profileDOB" value="${AppState.currentUser.dob || ''}" required>
             </div>
             <div class="form-group">
+                <label for="profileGender">Gender</label>
+                <select id="profileGender" required>
+                    <option value="Male" ${AppState.currentUser.gender === 'Male' ? 'selected' : ''}>Male</option>
+                    <option value="Female" ${AppState.currentUser.gender === 'Female' ? 'selected' : ''}>Female</option>
+                    <option value="Other" ${AppState.currentUser.gender === 'Other' ? 'selected' : ''}>Other</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="profileUsername">Username</label>
                 <input type="text" id="profileUsername" value="${AppState.currentUser.username}" required>
             </div>
@@ -1569,6 +1577,7 @@ async function handleProfileUpdate(event) {
     const lastName = document.getElementById('profileLastName').value.trim();
     const phone = document.getElementById('profilePhone').value.trim();
     const dob = document.getElementById('profileDOB').value.trim();
+    const gender = document.getElementById('profileGender').value;
     const username = document.getElementById('profileUsername').value.trim();
     const email = document.getElementById('profileEmail').value.trim();
     const address = document.getElementById('profileAddress').value.trim();
@@ -1614,6 +1623,7 @@ async function handleProfileUpdate(event) {
             fullName,
             phone,
             dob,
+            gender,
             username,
             email,
             address,

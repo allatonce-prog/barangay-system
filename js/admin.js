@@ -333,9 +333,14 @@ async function viewAdminRequestDetails(requestId) {
                         <p style="margin: var(--spacing-xs) 0 0 0;">${request.phone || 'N/A'}</p>
                     </div>
                     <div style="flex: 1;">
-                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Address:</strong>
-                        <p style="margin: var(--spacing-xs) 0 0 0;">${request.address || 'N/A'}</p>
+                        <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Gender:</strong>
+                        <p style="margin: var(--spacing-xs) 0 0 0;">${request.gender || 'N/A'}</p>
                     </div>
+                </div>
+
+                <div style="margin-bottom: var(--spacing-sm);">
+                    <strong style="font-size: var(--font-size-sm); color: var(--text-secondary);">Address:</strong>
+                    <p style="margin: var(--spacing-xs) 0 0 0;">${request.address || 'N/A'}</p>
                 </div>
 
                 <div style="margin-bottom: var(--spacing-sm);">

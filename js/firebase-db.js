@@ -82,6 +82,7 @@ async function registerUser(userData) {
             lastName: userData.lastName,
             phone: userData.phone,
             dob: userData.dob,
+            gender: userData.gender,
             address: userData.address,
             role: userData.role || 'resident',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
