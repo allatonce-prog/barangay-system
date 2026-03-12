@@ -46,9 +46,6 @@ async function initializeApp() {
 
     // Setup event listeners
     setupEventListeners();
-
-    // Check for PWA install prompt
-    setupPWAInstall();
 }
 
 // ========================================
@@ -857,34 +854,7 @@ function loadAllRequests() {
     `;
 }
 
-// ========================================
-// PWA INSTALL PROMPT
-// ========================================
-
-let deferredPrompt;
-
-function setupPWAInstall() {
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        console.log('PWA install prompt available');
-
-        // Show install button if needed
-        showInstallPrompt();
-    });
-
-    window.addEventListener('appinstalled', () => {
-        console.log('PWA installed successfully');
-        showToast('App installed successfully!', 'success');
-        deferredPrompt = null;
-    });
-}
-
-function showInstallPrompt() {
-    // You can show a custom install button here
-    // For now, we'll just log it
-    console.log('App can be installed');
-}
+// PWA Install logic moved to pwa-install.js
 
 // ========================================
 // PROFILE MODAL
@@ -1031,8 +1001,18 @@ window.handleHardReset = handleHardReset;
 
 function showDigitalIdModal() {
     const user = AppState.currentUser;
-    const profileImg = user.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=random`;
-    const idNumber = `BG1-${user.id.substring(0, 8).toUpperCase()}`;
+    
+    // Check if user has an active digital ID
+    if (!user.digitalIdStatus || user.digitalIdStatus === 'none') {
+        showDigitalIdApplication();
+        return;
+    }
+
+    const idData = user.digitalIdData || {};
+    const profileImg = idData.idPhoto || user.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=random`;
+    const idNumber = idData.idNumber || `BG1-${user.id.substring(0, 8).toUpperCase()}`;
+    const fullName = idData.fullName || user.fullName;
+    const role = idData.role || (user.role === 'admin' ? 'OFFICIAL' : 'RESIDENT');
 
     const modal = createModal('Digital Barangay ID', `
         <div class="id-card-container">
@@ -1047,14 +1027,14 @@ function showDigitalIdModal() {
                     <div class="id-card-content">
                         <img src="${profileImg}" class="id-photo" alt="Photo">
                         <div class="id-details">
-                            <h2>${user.fullName}</h2>
+                            <h2>${fullName}</h2>
                             <p>${idNumber}</p>
-                            <div class="id-tag">${user.role === 'admin' ? 'OFFICIAL' : 'RESIDENT'}</div>
+                            <div class="id-tag">${role}</div>
                         </div>
                     </div>
                     
                     <div style="font-size: 0.55rem; opacity: 0.7; text-align: right; letter-spacing: 0.5px;">
-                        VALID UNTIL: 12/2026
+                        VALID UNTIL: ${idData.expiryDate || '12/2026'}
                     </div>
                 </div>
 
@@ -1070,14 +1050,23 @@ function showDigitalIdModal() {
         </div>
         <div style="text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
             <p>Tap card to flip</p>
-            <button class="btn btn-primary" style="margin-top: 1rem; width: 100%;" onclick="downloadDigitalId()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                Save to Device
-            </button>
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button class="btn btn-outline" style="flex: 1;" onclick="showDigitalIdApplication()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Re-apply
+                </button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="downloadDigitalId()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Save
+                </button>
+            </div>
         </div>
     `, []);
 
@@ -1110,6 +1099,7 @@ function showDigitalIdModal() {
         }
     }, 100);
 }
+
 
 async function downloadDigitalId() {
     const cardFront = document.querySelector('.id-card-front');
@@ -1750,6 +1740,300 @@ window.closeModal = closeModal;
 window.showModal = showModal;
 window.createModal = createModal;
 window.showToast = showToast;
-window.setupNewRequestButtons = setupNewRequestButtons;
 window.showSimpleRequestModal = showSimpleRequestModal;
 window.handleSimpleRequest = handleSimpleRequest;
+
+// ========================================
+// DIGITAL ID APPLICATION FLOW
+// ========================================
+
+let facialScanStream = null;
+let capturedScanBlob = null;
+
+function showDigitalIdApplication() {
+    const user = AppState.currentUser;
+    const modal = createModal('Apply for Digital ID', `
+        <div style="margin-bottom: 20px;">
+            <div class="id-app-section">
+                <div class="id-app-section-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    Step 1: Facial Scan
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 15px;">Position your face inside the frame for the biometric ID photo.</p>
+                
+                <div class="facial-scan-container" id="scanContainer">
+                    <div class="camera-preview-wrapper" id="scanWrapper">
+                        <video id="facialScanVideo" autoplay playsinline></video>
+                        <div class="facial-overlay" id="facialOverlay"></div>
+                        <div class="scan-line" id="scanLine"></div>
+                        <div class="scan-status-indicator" id="scanStatus">
+                            <div class="status-dot" id="statusDot"></div>
+                            <span id="statusText">Detecting Face...</span>
+                        </div>
+                        <img id="scanPreview" class="captured-preview">
+                    </div>
+                </div>
+
+                <div class="scan-controls">
+                    <button id="captureBtn" class="scan-capture-btn" onclick="initiateFacialScanSequence()" title="Start Scan"></button>
+                    <button id="retakeBtn" class="btn btn-outline btn-sm" onclick="retakeFacialScan()" style="display: none;">Retake Scan</button>
+                </div>
+            </div>
+
+            <div class="id-app-section">
+                <div class="id-app-section-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Step 2: Verify Information
+                </div>
+                <form id="idAppForm" onsubmit="handleDigitalIdApplication(event)">
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>First Name</label>
+                            <input type="text" id="idFirstName" value="${user.firstName || ''}" required placeholder="First Name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Last Name</label>
+                            <input type="text" id="idLastName" value="${user.lastName || ''}" required placeholder="Last Name">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Birthday</label>
+                            <input type="date" id="idDob" value="${user.dob || ''}" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Gender</label>
+                            <select id="idGender" required>
+                                <option value="Male" ${user.gender === 'Male' ? 'selected' : ''}>Male</option>
+                                <option value="Female" ${user.gender === 'Female' ? 'selected' : ''}>Female</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Barangay</label>
+                        <input type="text" id="idBarangay" value="PANTUKAN" required placeholder="Barangay Name">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Purok , Street</label>
+                        <input type="text" id="idPurokStreet" value="${user.address || ''}" required placeholder="Purok #, Street Name">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" style="margin-top: 15px;" id="submitIdAppBtn">
+                        Generate Digital ID
+                    </button>
+                </form>
+            </div>
+        </div>
+    `, [
+        { text: 'Cancel', class: 'btn-outline', action: 'stopFacialScanAndClose' }
+    ]);
+
+    showModal(modal);
+    startFacialScanStream();
+}
+
+async function startFacialScanStream() {
+    const video = document.getElementById('facialScanVideo');
+    if (!video) return;
+
+    try {
+        facialScanStream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+                facingMode: 'user',
+                width: { ideal: 480 },
+                height: { ideal: 640 }
+            }
+        });
+        video.srcObject = facialScanStream;
+    } catch (err) {
+        console.error('Camera access denied:', err);
+        showToast('Camera access is required for facial scan', 'error');
+    }
+}
+
+async function initiateFacialScanSequence() {
+    const scanContainer = document.getElementById('scanContainer');
+    const statusText = document.getElementById('statusText');
+    const statusDot = document.getElementById('statusDot');
+    const captureBtn = document.getElementById('captureBtn');
+
+    if (captureBtn.disabled) return;
+    captureBtn.disabled = true;
+    captureBtn.style.opacity = '0.5';
+
+    // Start scanning animation
+    scanContainer.classList.add('scanning');
+    
+    // Step 1: Simulated Face Alignment
+    statusText.textContent = "ALIGHNING FACE...";
+    await new Promise(r => setTimeout(r, 1200));
+    
+    statusDot.classList.add('active');
+    statusText.textContent = "FACE DETECTED";
+    statusText.style.color = "#22c55e";
+    
+    // Step 2: Simulated Scanning/Biometric Analysis
+    await new Promise(r => setTimeout(r, 800));
+    statusText.textContent = "EXTRACTING BIOMETRICS...";
+    
+    await new Promise(r => setTimeout(r, 1500));
+    
+    // Step 3: Automated Capture
+    statusText.textContent = "CAPTURING...";
+    takeFacialSnapshot();
+}
+
+function takeFacialSnapshot() {
+    const video = document.getElementById('facialScanVideo');
+    const preview = document.getElementById('scanPreview');
+    const overlay = document.getElementById('facialOverlay');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const scanContainer = document.getElementById('scanContainer');
+    const statusIndicator = document.getElementById('scanStatus');
+
+    if (!video || !video.srcObject) return;
+
+    // Create a canvas to draw the snapshot
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    
+    // Mirror the draw
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+        capturedScanBlob = blob;
+        const url = URL.createObjectURL(blob);
+        
+        preview.src = url;
+        preview.style.display = 'block';
+        video.style.display = 'none';
+        overlay.style.display = 'none';
+        statusIndicator.style.display = 'none';
+        scanContainer.classList.remove('scanning');
+        
+        captureBtn.style.display = 'none';
+        retakeBtn.style.display = 'block';
+        
+        showToast('Identification biometric stored!', 'success');
+    }, 'image/jpeg', 0.9);
+}
+
+function retakeFacialScan() {
+    const video = document.getElementById('facialScanVideo');
+    const preview = document.getElementById('scanPreview');
+    const overlay = document.getElementById('facialOverlay');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const statusIndicator = document.getElementById('scanStatus');
+    const statusText = document.getElementById('statusText');
+    const statusDot = document.getElementById('statusDot');
+
+    capturedScanBlob = null;
+    preview.style.display = 'none';
+    video.style.display = 'block';
+    overlay.style.display = 'block';
+    statusIndicator.style.display = 'flex';
+    statusText.textContent = "Detecting Face...";
+    statusText.style.color = "white";
+    statusDot.classList.remove('active');
+    
+    captureBtn.style.display = 'flex';
+    captureBtn.disabled = false;
+    captureBtn.style.opacity = '1';
+    retakeBtn.style.display = 'none';
+}
+
+function stopFacialScanAndClose() {
+    if (facialScanStream) {
+        facialScanStream.getTracks().forEach(track => track.stop());
+        facialScanStream = null;
+    }
+    closeModal();
+}
+
+async function handleDigitalIdApplication(event) {
+    event.preventDefault();
+
+    if (!capturedScanBlob) {
+        showToast('Please take a facial scan first', 'warning');
+        return;
+    }
+
+    const submitBtn = document.getElementById('submitIdAppBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+
+    try {
+        showToast('Uploading biometric data...', 'info');
+        
+        // Upload scan to Cloudinary
+        const scanFile = new File([capturedScanBlob], `biometric_id_${AppState.currentUser.id}.jpg`, { type: 'image/jpeg' });
+        const scanUrl = await uploadToCloudinary(scanFile);
+
+        const firstName = document.getElementById('idFirstName').value.trim();
+        const lastName = document.getElementById('idLastName').value.trim();
+        const barangay = document.getElementById('idBarangay').value.trim();
+        const purokStreet = document.getElementById('idPurokStreet').value.trim();
+
+        const idData = {
+            firstName,
+            lastName,
+            fullName: `${firstName} ${lastName}`,
+            barangay,
+            purokStreet,
+            address: `${purokStreet}, ${barangay}`,
+            gender: document.getElementById('idGender').value,
+            dob: document.getElementById('idDob').value,
+            idPhoto: scanUrl,
+            idNumber: `BG1-${AppState.currentUser.id.substring(0, 8).toUpperCase()}`,
+            expiryDate: '12/2026',
+            appliedAt: new Date().toISOString()
+        };
+
+        const updates = {
+            digitalIdStatus: 'active',
+            digitalIdData: idData
+        };
+
+        // Update in DB
+        const collection = AppState.currentUser.role === 'admin' ? 'ADMIN' : 'RESIDENTS';
+        await DB.updateData(collection, AppState.currentUser.id, updates);
+
+        // Update local state
+        AppState.currentUser = { ...AppState.currentUser, ...updates };
+        localStorage.setItem('currentUser', JSON.stringify(AppState.currentUser));
+
+        showToast('Digital ID generated successfully!', 'success');
+        
+        stopFacialScanAndClose();
+        
+        // Finalize by showing the ID
+        setTimeout(() => {
+            showDigitalIdModal();
+        }, 500);
+
+    } catch (error) {
+        console.error('ID Application Error:', error);
+        showToast('Failed to apply for ID', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+}
+
+window.showDigitalIdApplication = showDigitalIdApplication;
+window.initiateFacialScanSequence = initiateFacialScanSequence;
+window.takeFacialSnapshot = takeFacialSnapshot;
+window.retakeFacialScan = retakeFacialScan;
+window.stopFacialScanAndClose = stopFacialScanAndClose;
+window.handleDigitalIdApplication = handleDigitalIdApplication;
+window.setupNewRequestButtons = setupNewRequestButtons;
+

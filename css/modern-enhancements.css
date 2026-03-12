@@ -706,3 +706,157 @@ textarea:focus-visible {
         border: 1px solid #e2e8f0 !important;
     }
 }
+
+/* Facial Scan & ID Application Styles */
+.facial-scan-container {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.camera-preview-wrapper {
+    position: relative;
+    width: 240px;
+    height: 320px;
+    margin: 0 auto;
+    background: #000;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 4px solid var(--primary-color);
+    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2);
+}
+
+#facialScanVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirror effect */
+}
+
+.facial-overlay {
+    position: absolute;
+    inset: 0;
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    margin: 40px 20px 80px 20px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+}
+
+.scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: rgba(37, 99, 235, 0.8);
+    box-shadow: 0 0 15px var(--primary-color);
+    z-index: 10;
+    display: none;
+}
+
+.scanning .scan-line {
+    display: block;
+    animation: scanMove 2s linear infinite;
+}
+
+@keyframes scanMove {
+    0% { top: 0; }
+    50% { top: 100%; }
+    100% { top: 0; }
+}
+
+.scan-status-indicator {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(4px);
+    z-index: 11;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444; /* Default Red */
+}
+
+.status-dot.active {
+    background: #22c55e; /* Green when face aligned */
+    box-shadow: 0 0 8px #22c55e;
+}
+
+
+.scan-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.scan-capture-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: white;
+    border: 5px solid var(--primary-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.scan-capture-btn:active {
+    transform: scale(0.9);
+}
+
+.scan-capture-btn::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    border-radius: 50%;
+}
+
+.captured-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+/* ID Application Form */
+.id-app-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.id-app-section:last-child {
+    border-bottom: none;
+}
+
+.id-app-section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}

@@ -1852,6 +1852,60 @@ textarea:focus-visible {
 }
 
 /* Mobile adjustments */
+/* Mandatory PWA Overlay */
+.install-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 2499;
+    display: none;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.install-prompt.mandatory {
+    top: 50%;
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    max-width: 90%;
+    width: 400px;
+    z-index: 2501;
+    animation: fadeInScale 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -40%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.install-prompt.mandatory .install-prompt-content {
+    flex-direction: column;
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.install-prompt.mandatory .install-prompt-btn {
+    width: 100%;
+    height: 50px;
+}
+
+.install-prompt.mandatory .install-prompt-close {
+    display: flex; /* Show the close button */
+}
+
 @media (max-width: 768px) {
     .install-prompt {
         left: var(--spacing-sm);
