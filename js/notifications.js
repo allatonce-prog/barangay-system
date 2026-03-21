@@ -177,12 +177,16 @@ async function handleNotificationClick(notificationId, requestId) {
         const isAdmin = AppState.currentUser.role === 'admin';
 
         if (isAdmin) {
+            // Admin: always use viewAdminRequestDetails (it reads ALL requests)
+            // viewRequestDetails is a resident function — it only finds the user's OWN requests
             navigateToPage('admin-requests');
             setTimeout(() => {
-                if (window.viewRequestDetails) window.viewRequestDetails(requestId);
-                else if (window.viewAdminRequestDetails) window.viewAdminRequestDetails(requestId);
-            }, 500);
+                if (window.viewAdminRequestDetails) {
+                    window.viewAdminRequestDetails(requestId);
+                }
+            }, 700); // slightly longer timeout to let admin-requests page finish loading
         } else {
+            // Resident: use their own request detail viewer
             if (window.viewRequestDetails) window.viewRequestDetails(requestId);
         }
     }
