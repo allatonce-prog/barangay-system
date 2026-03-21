@@ -1,358 +1,698 @@
 // ========================================
-// PAYMENTS MODULE
+// PAYMENTS MODULE - GCash Receipt Upload
 // ========================================
 
-// Payment methods
-const PAYMENT_METHODS = [
-    { id: 'gcash', name: 'GCash', icon: '💳', available: true },
-    { id: 'paymaya', name: 'PayMaya', icon: '💰', available: true },
-    { id: 'card', name: 'Credit/Debit Card', icon: '💳', available: true },
-    { id: 'cash', name: 'Cash on Pickup', icon: '💵', available: true }
-];
-
-// Fee structure
+// Fee structure per document type
 const DOCUMENT_FEES = {
     'Barangay Clearance': 50,
     'Certificate of Residency': 30,
-    'Certificate of Indigency': 0, // Free
+    'Certificate of Indigency': 0,
     'Cedula': 50,
     'Barangay ID': 100,
     'Other': 50
 };
 
+// !! IMPORTANT: Replace these with the actual barangay GCash details !!
+const BARANGAY_GCASH = {
+    number: '0917-XXX-XXXX',  // <-- Replace with real GCash number
+    name: 'Barangay Pantukan' // <-- Replace with registered GCash account name
+};
+
+// Holds the selected receipt file globally
+let selectedReceiptFile = null;
+
 // ========================================
-// SHOW PAYMENT MODAL
+// STEP 1: SHOW GCASH PAYMENT MODAL
+// Called right after request is submitted
 // ========================================
 
-function showPaymentModal(requestId) {
-    const requests = JSON.parse(localStorage.getItem('requests') || '[]');
-    const request = requests.find(r => r.id === requestId);
+function showGCashPaymentModal(requestId, documentType) {
+    selectedReceiptFile = null;
 
-    if (!request) {
-        showToast('Request not found', 'error');
-        return;
-    }
+    const fee = DOCUMENT_FEES[documentType] || 50;
+    const isFree = fee === 0;
 
-    const fee = DOCUMENT_FEES[request.documentType] || 50;
-    const total = fee * request.quantity;
+    const modal = createModal('Payment Required', `
+        <div style="display: flex; flex-direction: column; gap: 16px;">
 
-    if (total === 0) {
-        showToast('This document is free of charge', 'info');
-        return;
-    }
-
-    // Check if already paid
-    const payments = JSON.parse(localStorage.getItem('payments') || '[]');
-    const existingPayment = payments.find(p => p.requestId === requestId && p.status === 'completed');
-
-    if (existingPayment) {
-        showToast('Payment already completed', 'info');
-        return;
-    }
-
-    const modal = createModal('Payment', `
-        <div style="background: var(--bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-lg); margin-bottom: var(--spacing-lg);">
-            <h4 style="margin: 0 0 var(--spacing-md) 0;">Payment Summary</h4>
-            <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
-                <span>Document:</span>
-                <strong>${request.documentType}</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
-                <span>Quantity:</span>
-                <strong>${request.quantity}</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
-                <span>Fee per document:</span>
-                <strong>₱${fee.toFixed(2)}</strong>
-            </div>
-            <div style="height: 1px; background: var(--border-color); margin: var(--spacing-md) 0;"></div>
-            <div style="display: flex; justify-content: space-between; font-size: var(--font-size-lg);">
-                <strong>Total Amount:</strong>
-                <strong style="color: var(--primary-color);">₱${total.toFixed(2)}</strong>
-            </div>
-        </div>
-        
-        <form id="paymentForm" onsubmit="handlePayment(event, '${requestId}', ${total})">
-            <div class="form-group">
-                <label>Select Payment Method *</label>
-                <div style="display: grid; gap: var(--spacing-sm);">
-                    ${PAYMENT_METHODS.map(method => `
-                        <label style="display: flex; align-items: center; padding: var(--spacing-md); border: 2px solid var(--border-color); border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);" 
-                               onmouseover="this.style.borderColor='var(--primary-color)'" 
-                               onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='var(--border-color)'">
-                            <input type="radio" name="paymentMethod" value="${method.id}" required 
-                                   onchange="this.parentElement.parentElement.querySelectorAll('label').forEach(l => l.style.borderColor='var(--border-color)'); this.parentElement.style.borderColor='var(--primary-color)';"
-                                   style="margin-right: var(--spacing-md);">
-                            <span style="font-size: var(--font-size-xl); margin-right: var(--spacing-sm);">${method.icon}</span>
-                            <span style="flex: 1;">${method.name}</span>
-                            ${!method.available ? '<span class="badge badge-warning">Coming Soon</span>' : ''}
-                        </label>
-                    `).join('')}
+            <!-- Fee Summary Banner -->
+            <div style="
+                background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+                border-radius: 16px;
+                padding: 20px;
+                color: white;
+                text-align: center;
+            ">
+                <p style="margin: 0 0 4px 0; font-size: 0.8rem; opacity: 0.85; letter-spacing: 1px; text-transform: uppercase;">Amount Due</p>
+                <div style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1px;">
+                    ${isFree ? 'FREE' : `₱${fee.toFixed(2)}`}
                 </div>
+                <p style="margin: 6px 0 0 0; font-size: 0.85rem; opacity: 0.9;">${documentType}</p>
             </div>
-            
-            <div id="cardDetails" style="display: none;">
-                <div class="form-group">
-                    <label for="cardNumber">Card Number</label>
-                    <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+
+            ${isFree ? `
+                <!-- FREE document — no payment needed -->
+                <div style="
+                    background: rgba(16, 185, 129, 0.08);
+                    border: 1px solid rgba(16, 185, 129, 0.3);
+                    border-radius: 12px;
+                    padding: 16px;
+                    text-align: center;
+                ">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">🎉</div>
+                    <p style="margin: 0; color: var(--success-color); font-weight: 600;">This document is free of charge!</p>
+                    <p style="margin: 6px 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">No payment is required. Click "Confirm" to proceed.</p>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
-                    <div class="form-group">
-                        <label for="cardExpiry">Expiry Date</label>
-                        <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5">
+            ` : `
+                <!-- GCash Payment Instructions -->
+                <div style="
+                    background: var(--bg-secondary);
+                    border-radius: 12px;
+                    padding: 16px;
+                ">
+                    <h4 style="margin: 0 0 12px 0; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">📱</span> Send Payment via GCash
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: white; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">GCash Number</span>
+                            <strong style="color: #007aff; font-size: 1rem; letter-spacing: 0.5px;">${BARANGAY_GCASH.number}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: white; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Account Name</span>
+                            <strong style="color: var(--text-primary);">${BARANGAY_GCASH.name}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: white; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Amount to Send</span>
+                            <strong style="color: #10b981; font-size: 1.1rem;">₱${fee.toFixed(2)}</strong>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="cardCVV">CVV</label>
-                        <input type="text" id="cardCVV" placeholder="123" maxlength="3">
+                    <p style="margin: 10px 0 0 0; font-size: 0.75rem; color: var(--text-secondary); text-align: center;">
+                        ⚠️ Make sure to send the exact amount above
+                    </p>
+                </div>
+
+                <!-- Receipt Upload -->
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; margin-bottom: 8px; display: block; font-size: 0.9rem;">
+                        Upload GCash Receipt Screenshot <span style="color: var(--danger-color);">*</span>
+                    </label>
+                    <div id="receiptUploadArea" onclick="document.getElementById('gcashReceiptInput').click()" style="
+                        border: 2px dashed var(--primary-color);
+                        border-radius: 14px;
+                        padding: 24px 16px;
+                        text-align: center;
+                        cursor: pointer;
+                        background: rgba(37, 99, 235, 0.03);
+                        transition: all 0.2s ease;
+                        min-height: 130px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                    "
+                    onmouseover="this.style.background='rgba(37,99,235,0.07)'"
+                    onmouseout="if(!selectedReceiptFile) this.style.background='rgba(37,99,235,0.03)'"
+                    >
+                        <input
+                            type="file"
+                            id="gcashReceiptInput"
+                            accept="image/*"
+                            style="display: none;"
+                            onchange="handleReceiptFileSelect(event)"
+                        >
+                        <div id="receiptUploadIcon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                        <div id="receiptUploadText">
+                            <p style="margin: 0; font-weight: 600; color: var(--primary-color); font-size: 0.9rem;">Tap to upload GCash screenshot</p>
+                            <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">JPG, PNG, or WEBP • Max 10MB</p>
+                        </div>
+                    </div>
+
+                    <!-- Preview will appear here -->
+                    <div id="receiptPreviewContainer" style="display: none; margin-top: 10px; position: relative;">
+                        <img id="receiptPreviewImg" style="
+                            width: 100%;
+                            max-height: 200px;
+                            object-fit: contain;
+                            border-radius: 10px;
+                            border: 1px solid var(--border-color);
+                            background: var(--bg-secondary);
+                        ">
+                        <button onclick="clearReceiptFile()" style="
+                            position: absolute;
+                            top: 6px;
+                            right: 6px;
+                            background: rgba(239,68,68,0.9);
+                            color: white;
+                            border: none;
+                            border-radius: 50%;
+                            width: 28px;
+                            height: 28px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">✕</button>
                     </div>
                 </div>
-            </div>
-            
-            <div id="ewalletDetails" style="display: none;">
-                <div class="form-group">
-                    <label for="mobileNumber">Mobile Number</label>
-                    <input type="tel" id="mobileNumber" placeholder="09XX XXX XXXX" maxlength="11">
-                </div>
-            </div>
-            
-            <div style="background: rgba(37, 99, 235, 0.1); padding: var(--spacing-md); border-radius: var(--radius-md); margin: var(--spacing-lg) 0;">
-                <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin: 0;">
-                    <strong>🔒 Secure Payment:</strong> Your payment information is encrypted and secure. You will receive a digital receipt after successful payment.
+            `}
+
+            <!-- Info note -->
+            <div style="
+                background: rgba(245, 158, 11, 0.08);
+                border: 1px solid rgba(245, 158, 11, 0.25);
+                border-radius: 10px;
+                padding: 12px 14px;
+                display: flex;
+                gap: 10px;
+                align-items: flex-start;
+            ">
+                <span style="font-size: 1.1rem; flex-shrink: 0;">ℹ️</span>
+                <p style="margin: 0; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+                    Your payment will be <strong>verified by the admin</strong> before your request is processed.
+                    You will receive a notification once confirmed.
                 </p>
             </div>
-            
-            <div class="modal-footer" style="border: none; padding: var(--spacing-lg) 0 0 0;">
-                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Pay ₱${total.toFixed(2)}</button>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 10px; padding-top: 4px;">
+                <button
+                    type="button"
+                    class="btn btn-outline"
+                    onclick="closeModal()"
+                    style="flex: 1;"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    id="confirmPaymentBtn"
+                    onclick="handleConfirmPayment('${requestId}', '${documentType}', ${isFree})"
+                    style="
+                        flex: 2;
+                        background: linear-gradient(135deg, #007aff, #0055d4);
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        padding: 14px;
+                        font-weight: 700;
+                        font-size: 0.95rem;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        transition: opacity 0.2s;
+                    "
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Confirm Payment
+                </button>
             </div>
-        </form>
+        </div>
     `, []);
 
     showModal(modal);
-
-    // Add event listeners for payment method selection
-    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            document.getElementById('cardDetails').style.display = 'none';
-            document.getElementById('ewalletDetails').style.display = 'none';
-
-            if (e.target.value === 'card') {
-                document.getElementById('cardDetails').style.display = 'block';
-            } else if (e.target.value === 'gcash' || e.target.value === 'paymaya') {
-                document.getElementById('ewalletDetails').style.display = 'block';
-            }
-        });
-    });
 }
 
 // ========================================
-// HANDLE PAYMENT
+// RECEIPT FILE HANDLERS
 // ========================================
 
-function handlePayment(event, requestId, amount) {
-    event.preventDefault();
+function handleReceiptFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-
-    if (!paymentMethod) {
-        showToast('Please select a payment method', 'error');
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
         return;
     }
 
-    // Simulate payment processing
-    showToast('Processing payment...', 'info');
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('File size must be less than 10MB', 'error');
+        return;
+    }
 
-    setTimeout(() => {
-        const payment = {
-            id: `pay-${Date.now()}`,
-            referenceNumber: generatePaymentReference(),
+    selectedReceiptFile = file;
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const previewContainer = document.getElementById('receiptPreviewContainer');
+        const previewImg = document.getElementById('receiptPreviewImg');
+        const uploadArea = document.getElementById('receiptUploadArea');
+        const uploadIcon = document.getElementById('receiptUploadIcon');
+        const uploadText = document.getElementById('receiptUploadText');
+
+        if (previewImg) previewImg.src = e.target.result;
+        if (previewContainer) previewContainer.style.display = 'block';
+
+        // Update upload area to show success state
+        if (uploadArea) uploadArea.style.background = 'rgba(16, 185, 129, 0.06)';
+        if (uploadArea) uploadArea.style.borderColor = 'var(--success-color)';
+        if (uploadIcon) uploadIcon.innerHTML = `<div style="font-size: 2rem;">✅</div>`;
+        if (uploadText) uploadText.innerHTML = `
+            <p style="margin: 0; font-weight: 600; color: var(--success-color); font-size: 0.9rem;">${file.name}</p>
+            <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">Tap to change</p>
+        `;
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearReceiptFile() {
+    selectedReceiptFile = null;
+
+    const previewContainer = document.getElementById('receiptPreviewContainer');
+    const uploadArea = document.getElementById('receiptUploadArea');
+    const uploadIcon = document.getElementById('receiptUploadIcon');
+    const uploadText = document.getElementById('receiptUploadText');
+    const input = document.getElementById('gcashReceiptInput');
+
+    if (previewContainer) previewContainer.style.display = 'none';
+    if (uploadArea) {
+        uploadArea.style.background = 'rgba(37, 99, 235, 0.03)';
+        uploadArea.style.borderColor = 'var(--primary-color)';
+    }
+    if (uploadIcon) uploadIcon.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+        </svg>
+    `;
+    if (uploadText) uploadText.innerHTML = `
+        <p style="margin: 0; font-weight: 600; color: var(--primary-color); font-size: 0.9rem;">Tap to upload GCash screenshot</p>
+        <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">JPG, PNG, or WEBP • Max 10MB</p>
+    `;
+    if (input) input.value = '';
+}
+
+// ========================================
+// STEP 2: HANDLE CONFIRM PAYMENT
+// ========================================
+
+async function handleConfirmPayment(requestId, documentType, isFree) {
+    // Validate: receipt required unless free
+    if (!isFree && !selectedReceiptFile) {
+        showToast('Please upload your GCash receipt screenshot', 'error');
+        return;
+    }
+
+    // Disable confirm button
+    const btn = document.getElementById('confirmPaymentBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `
+            <div style="width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            Uploading...
+        `;
+    }
+
+    try {
+        let receiptImageUrl = null;
+        const fee = DOCUMENT_FEES[documentType] || 0;
+
+        // Upload receipt to Cloudinary (if not free)
+        if (!isFree && selectedReceiptFile) {
+            showToast('Uploading receipt...', 'info');
+            receiptImageUrl = await uploadToCloudinary(selectedReceiptFile);
+        }
+
+        // Generate payment reference
+        const referenceNumber = `PAY-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
+
+        // Save payment to Firestore PAYMENTS collection
+        const paymentData = {
+            requestId: requestId,
             userId: AppState.currentUser.id,
-            requestId,
-            amount,
-            method: paymentMethod,
-            status: 'completed', // In production: pending, processing, completed, failed
+            userName: AppState.currentUser.fullName,
+            documentType: documentType,
+            amount: fee,
+            method: isFree ? 'free' : 'gcash',
+            referenceNumber: referenceNumber,
+            receiptImageUrl: receiptImageUrl,
+            status: isFree ? 'confirmed' : 'pending_verification',
             createdAt: new Date().toISOString()
         };
 
-        // Save payment
-        const payments = JSON.parse(localStorage.getItem('payments') || '[]');
-        payments.push(payment);
-        localStorage.setItem('payments', JSON.stringify(payments));
+        await DB.createPayment(paymentData);
 
-        // Update request to mark as paid
-        const requests = JSON.parse(localStorage.getItem('requests') || '[]');
-        const requestIndex = requests.findIndex(r => r.id === requestId);
-        if (requestIndex !== -1) {
-            requests[requestIndex].paid = true;
-            requests[requestIndex].paymentId = payment.id;
-            localStorage.setItem('requests', JSON.stringify(requests));
-        }
-
-        // Create notification
-        createNotification({
-            userId: AppState.currentUser.id,
-            title: 'Payment Successful',
-            message: `Payment of ₱${amount.toFixed(2)} completed. Reference: ${payment.referenceNumber}`,
-            type: 'success',
-            paymentId: payment.id
+        // Update the request in Firestore with payment info
+        await DB.updateData('REQUESTS', requestId, {
+            paymentStatus: isFree ? 'confirmed' : 'pending_verification',
+            paymentReceiptUrl: receiptImageUrl,
+            paymentReference: referenceNumber,
+            paymentAmount: fee
         });
 
-        showToast('Payment successful!', 'success');
-        closeModal();
+        // Notify admin about payment
+        if (!isFree) {
+            await DB.createNotification({
+                userId: 'role:admin',
+                title: '💳 Payment Receipt Submitted',
+                message: `${AppState.currentUser.fullName} submitted a GCash receipt for ${documentType}. Please verify.`,
+                type: 'info',
+                requestId: requestId,
+                link: 'admin-requests'
+            });
+        }
 
-        // Show receipt
-        setTimeout(() => {
-            showReceiptModal(payment.id);
-        }, 500);
+        // Show loading screen before summary
+        showPaymentLoadingScreen(requestId);
 
-        updateNotificationBadge();
-    }, 2000);
-}
+    } catch (error) {
+        console.error('Payment confirm error:', error);
+        showToast('Failed to submit payment. Please try again.', 'error');
 
-function generatePaymentReference() {
-    const year = new Date().getFullYear();
-    const payments = JSON.parse(localStorage.getItem('payments') || '[]');
-    const count = payments.length + 1;
-    return `PAY-${year}-${String(count).padStart(6, '0')}`;
-}
-
-// ========================================
-// SHOW RECEIPT MODAL
-// ========================================
-
-function showReceiptModal(paymentId) {
-    const payments = JSON.parse(localStorage.getItem('payments') || '[]');
-    const payment = payments.find(p => p.id === paymentId);
-
-    if (!payment) {
-        showToast('Receipt not found', 'error');
-        return;
+        // Re-enable button
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Confirm Payment
+            `;
+        }
     }
-
-    const requests = JSON.parse(localStorage.getItem('requests') || '[]');
-    const request = requests.find(r => r.id === payment.requestId);
-
-    const modal = createModal('Payment Receipt', `
-        <div style="text-align: center; margin-bottom: var(--spacing-lg);">
-            <div style="width: 80px; height: 80px; margin: 0 auto var(--spacing-md); background: linear-gradient(135deg, var(--success-color), #34d399); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-            </div>
-            <h3 style="color: var(--success-color); margin-bottom: var(--spacing-xs);">Payment Successful!</h3>
-            <p style="color: var(--text-secondary); font-size: var(--font-size-sm);">Your payment has been processed</p>
-        </div>
-        
-        <div style="background: var(--bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-lg); margin-bottom: var(--spacing-lg);">
-            <div style="text-align: center; margin-bottom: var(--spacing-lg);">
-                <div style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--primary-color);">
-                    ₱${payment.amount.toFixed(2)}
-                </div>
-                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
-                    Reference: ${payment.referenceNumber}
-                </div>
-            </div>
-            
-            <div style="border-top: 1px dashed var(--border-color); padding-top: var(--spacing-md);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
-                    <span style="color: var(--text-secondary);">Date & Time:</span>
-                    <strong>${new Date(payment.createdAt).toLocaleString()}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
-                    <span style="color: var(--text-secondary);">Payment Method:</span>
-                    <strong style="text-transform: capitalize;">${payment.method}</strong>
-                </div>
-                ${request ? `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
-                        <span style="color: var(--text-secondary);">Document:</span>
-                        <strong>${request.documentType}</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
-                        <span style="color: var(--text-secondary);">Tracking #:</span>
-                        <strong>${request.trackingNumber}</strong>
-                    </div>
-                ` : ''}
-                <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-secondary);">Status:</span>
-                    <span class="badge badge-${payment.status}">${payment.status}</span>
-                </div>
-            </div>
-        </div>
-        
-        <div style="text-align: center; margin-bottom: var(--spacing-lg);">
-            <p style="font-size: var(--font-size-sm); color: var(--text-secondary);">
-                A copy of this receipt has been saved to your account.
-            </p>
-        </div>
-    `, [
-        { text: 'Download Receipt', class: 'btn-outline', action: 'downloadReceipt(\'' + paymentId + '\')' },
-        { text: 'Close', class: 'btn-primary', action: 'close' }
-    ]);
-
-    showModal(modal);
-}
-
-function downloadReceipt(paymentId) {
-    // In production, generate and download PDF
-    showToast('Receipt download feature coming soon', 'info');
 }
 
 // ========================================
-// PAYMENT HISTORY
+// STEP 2.5: LOADING SCREEN ANIMATION
+// ========================================
+
+function showPaymentLoadingScreen(requestId) {
+    // Close payment modal first
+    closeModal();
+
+    // Create full loading overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'paymentLoadingOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(255,255,255,0.97);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        animation: fadeIn 0.3s ease;
+    `;
+
+    overlay.innerHTML = `
+        <style>
+            @keyframes paySpinRing {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            @keyframes payPulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.08); opacity: 0.8; }
+            }
+        </style>
+
+        <!-- Animated GCash-style spinner -->
+        <div style="position: relative; width: 90px; height: 90px;">
+            <div style="
+                position: absolute; inset: 0;
+                border: 4px solid rgba(37,99,235,0.15);
+                border-top: 4px solid #2563eb;
+                border-radius: 50%;
+                animation: paySpinRing 0.9s linear infinite;
+            "></div>
+            <div style="
+                position: absolute; inset: 10px;
+                border: 3px solid rgba(37,99,235,0.1);
+                border-top: 3px solid #60a5fa;
+                border-radius: 50%;
+                animation: paySpinRing 1.4s linear infinite reverse;
+            "></div>
+            <div style="
+                position: absolute; inset: 0;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 1.8rem;
+                animation: payPulse 1.5s ease infinite;
+            ">💳</div>
+        </div>
+
+        <div style="text-align: center;">
+            <h3 style="margin: 0 0 6px 0; color: var(--text-primary); font-size: 1.1rem;">Processing Payment...</h3>
+            <p id="payLoadingSubtext" style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">Saving your receipt</p>
+        </div>
+
+        <!-- Animated steps -->
+        <div style="display: flex; flex-direction: column; gap: 10px; width: 260px;">
+            <div class="pay-step" id="payStep1" style="display:flex; align-items:center; gap:10px; opacity:0.3; transition: opacity 0.4s;">
+                <div style="width:24px; height:24px; border-radius:50%; background:#dbeafe; display:flex; align-items:center; justify-content:center; font-size:0.75rem; flex-shrink:0;">1</div>
+                <span style="font-size:0.85rem; color:var(--text-secondary);">Receipt uploaded</span>
+            </div>
+            <div class="pay-step" id="payStep2" style="display:flex; align-items:center; gap:10px; opacity:0.3; transition: opacity 0.4s;">
+                <div style="width:24px; height:24px; border-radius:50%; background:#dbeafe; display:flex; align-items:center; justify-content:center; font-size:0.75rem; flex-shrink:0;">2</div>
+                <span style="font-size:0.85rem; color:var(--text-secondary);">Payment record saved</span>
+            </div>
+            <div class="pay-step" id="payStep3" style="display:flex; align-items:center; gap:10px; opacity:0.3; transition: opacity 0.4s;">
+                <div style="width:24px; height:24px; border-radius:50%; background:#dbeafe; display:flex; align-items:center; justify-content:center; font-size:0.75rem; flex-shrink:0;">3</div>
+                <span style="font-size:0.85rem; color:var(--text-secondary);">Notifying admin</span>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Animate checklist steps
+    const steps = [
+        { el: 'payStep1', delay: 400, text: 'Receipt uploaded ✅' },
+        { el: 'payStep2', delay: 900, text: 'Payment record saved ✅' },
+        { el: 'payStep3', delay: 1400, text: 'Admin notified ✅' },
+    ];
+
+    steps.forEach(({ el, delay, text }) => {
+        setTimeout(() => {
+            const stepEl = document.getElementById(el);
+            if (stepEl) {
+                stepEl.style.opacity = '1';
+                stepEl.querySelector('div').style.background = '#dcfce7';
+                stepEl.querySelector('div').style.color = '#16a34a';
+                stepEl.querySelector('span').textContent = text;
+                stepEl.querySelector('span').style.color = 'var(--text-primary)';
+                stepEl.querySelector('span').style.fontWeight = '600';
+            }
+        }, delay);
+    });
+
+    // Show summary after loading
+    setTimeout(() => {
+        const loadingOverlay = document.getElementById('paymentLoadingOverlay');
+        if (loadingOverlay) loadingOverlay.remove();
+        showSubmissionSummaryModal(requestId);
+    }, 2200);
+}
+
+// ========================================
+// STEP 3: SUBMISSION SUMMARY MODAL
+// ========================================
+
+async function showSubmissionSummaryModal(requestId) {
+    try {
+        const result = await DB.getData('REQUESTS', requestId);
+        if (!result.success || !result.data) {
+            showToast('Could not load request details', 'error');
+            navigateToPage('requests');
+            return;
+        }
+
+        const request = result.data;
+        const fee = DOCUMENT_FEES[request.documentType] || 0;
+        const isFree = fee === 0;
+
+        const modal = createModal('Submission Review', `
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                <!-- Success Header -->
+                <div style="text-align: center; padding: 10px 0 6px;">
+                    <div style="
+                        width: 64px; height: 64px;
+                        background: linear-gradient(135deg, #10b981, #34d399);
+                        border-radius: 50%;
+                        margin: 0 auto 12px;
+                        display: flex; align-items: center; justify-content: center;
+                        box-shadow: 0 4px 20px rgba(16,185,129,0.3);
+                    ">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <h3 style="margin: 0; color: var(--text-primary);">Request Submitted!</h3>
+                    <p style="margin: 6px 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">Your request is now under review</p>
+                </div>
+
+                <!-- Request Details Card -->
+                <div style="background: var(--bg-secondary); border-radius: 14px; overflow: hidden;">
+                    <div style="padding: 12px 16px; background: rgba(37,99,235,0.07); border-bottom: 1px solid var(--border-color);">
+                        <p style="margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.8px;">Request Details</p>
+                    </div>
+                    <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Tracking No.</span>
+                            <code style="background: var(--bg-tertiary); padding: 3px 8px; border-radius: 6px; font-size: 0.82rem; color: var(--primary-color); font-weight: 700;">${request.trackingNumber}</code>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Document</span>
+                            <strong style="font-size: 0.88rem;">${request.documentType}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Name</span>
+                            <strong style="font-size: 0.88rem;">${request.userName}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Purpose</span>
+                            <span style="font-size: 0.82rem; text-align: right; max-width: 60%;">${request.purpose}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Quantity</span>
+                            <strong>${request.quantity}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Submitted</span>
+                            <span style="font-size: 0.82rem;">${formatDateTime(request.createdAt)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Status</span>
+                            <span class="badge badge-pending">Pending</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Details Card -->
+                <div style="background: var(--bg-secondary); border-radius: 14px; overflow: hidden;">
+                    <div style="padding: 12px 16px; background: rgba(37,99,235,0.07); border-bottom: 1px solid var(--border-color);">
+                        <p style="margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.8px;">Payment Details</p>
+                    </div>
+                    <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Amount</span>
+                            <strong style="color: ${isFree ? 'var(--success-color)' : 'var(--primary-color)'}; font-size: 1rem;">
+                                ${isFree ? 'FREE' : `₱${fee.toFixed(2)}`}
+                            </strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Method</span>
+                            <strong>${isFree ? 'Free Document' : '📱 GCash'}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Payment Status</span>
+                            <span class="badge ${isFree ? 'badge-completed' : 'badge-processing'}" style="font-size: 0.72rem;">
+                                ${isFree ? 'Confirmed' : 'Pending Verification'}
+                            </span>
+                        </div>
+                        ${request.paymentReceiptUrl ? `
+                        <div style="margin-top: 4px;">
+                            <p style="margin: 0 0 6px 0; font-size: 0.78rem; color: var(--text-secondary);">Receipt Submitted:</p>
+                            <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                                <img src="${request.paymentReceiptUrl}"
+                                     alt="GCash Receipt"
+                                     style="width: 100%; max-height: 150px; object-fit: contain; cursor: pointer; background: var(--bg-tertiary);"
+                                     onclick="window.open('${request.paymentReceiptUrl}', '_blank')"
+                                >
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- What happens next -->
+                <div style="
+                    background: rgba(37,99,235,0.05);
+                    border: 1px solid rgba(37,99,235,0.15);
+                    border-radius: 12px;
+                    padding: 14px;
+                ">
+                    <p style="margin: 0 0 8px 0; font-weight: 700; font-size: 0.85rem; color: var(--primary-color);">📋 What happens next?</p>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-secondary);">1. Admin reviews your request and payment receipt</p>
+                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-secondary);">2. You'll receive a notification when payment is verified</p>
+                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-secondary);">3. Your document will be processed and ready for pickup</p>
+                    </div>
+                </div>
+
+                <!-- Done Button -->
+                <button
+                    onclick="closeModal(); navigateToPage('requests');"
+                    style="
+                        width: 100%;
+                        padding: 14px;
+                        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                        color: white;
+                        border: none;
+                        border-radius: 12px;
+                        font-weight: 700;
+                        font-size: 1rem;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+                    "
+                >
+                    View My Requests
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </button>
+            </div>
+        `, []);
+
+        showModal(modal);
+
+        // Reset receipt file
+        selectedReceiptFile = null;
+
+    } catch (error) {
+        console.error('Error showing summary:', error);
+        showToast('Request submitted! Redirecting...', 'success');
+        navigateToPage('requests');
+    }
+}
+
+// ========================================
+// PAYMENT HISTORY (kept for admin use)
 // ========================================
 
 function loadPaymentHistory(container) {
-    const payments = JSON.parse(localStorage.getItem('payments') || '[]')
-        .filter(p => p.userId === AppState.currentUser.id)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
     container.innerHTML = `
         <div class="page-header">
             <h2>Payment History</h2>
             <p>View all your payment transactions</p>
         </div>
-        
-        <div class="card">
-            <div class="card-body">
-                ${payments.length === 0 ?
-            '<p style="text-align: center; color: var(--text-secondary); padding: var(--spacing-xl);">No payment history</p>' :
-            `<div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Reference</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${payments.map(payment => `
-                                    <tr>
-                                        <td><strong>${payment.referenceNumber}</strong></td>
-                                        <td><strong style="color: var(--primary-color);">₱${payment.amount.toFixed(2)}</strong></td>
-                                        <td style="text-transform: capitalize;">${payment.method}</td>
-                                        <td>${new Date(payment.createdAt).toLocaleDateString()}</td>
-                                        <td><span class="badge badge-${payment.status}">${payment.status}</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline" onclick="showReceiptModal('${payment.id}')">View Receipt</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>`
-        }
-            </div>
+        <div style="text-align:center; padding: var(--spacing-xl); color: var(--text-secondary);">
+            <p>Payment history is now tracked in your requests.</p>
+            <button class="btn btn-primary" onclick="navigateToPage('requests')">View My Requests</button>
         </div>
     `;
 }
 
-// Make functions globally available
-window.showPaymentModal = showPaymentModal;
-window.handlePayment = handlePayment;
-window.showReceiptModal = showReceiptModal;
-window.downloadReceipt = downloadReceipt;
+// ========================================
+// GLOBAL EXPORTS
+// ========================================
+
+window.showGCashPaymentModal = showGCashPaymentModal;
+window.handleReceiptFileSelect = handleReceiptFileSelect;
+window.clearReceiptFile = clearReceiptFile;
+window.handleConfirmPayment = handleConfirmPayment;
+window.showSubmissionSummaryModal = showSubmissionSummaryModal;
 window.loadPaymentHistory = loadPaymentHistory;
+window.DOCUMENT_FEES = DOCUMENT_FEES;

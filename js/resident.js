@@ -288,29 +288,27 @@ async function handleNewRequest(event) {
             ]
         };
 
-        // Save to local database
+        // Save to Firestore
         const result = await DB.createRequest(request);
 
         if (result.success) {
             request.id = result.id;
 
-
-
-            // Show success message
-            showToast('Request submitted successfully!', 'success');
-
-            // Reset form before closing modal
+            // Reset form
             const form = document.getElementById('newRequestForm');
             if (form) {
                 form.reset();
                 selectedFiles = [];
             }
 
-            // Close modal
+            // Close the request form modal
             closeModal();
 
-            // Navigate to requests page to see the new request
-            navigateToPage('requests');
+            // ✅ Open GCash Payment Modal immediately after submission
+            setTimeout(() => {
+                showGCashPaymentModal(result.id, documentType);
+            }, 300);
+
         } else {
             showToast(result.error || 'Failed to submit request', 'error');
         }

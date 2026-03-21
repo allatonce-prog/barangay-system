@@ -400,7 +400,103 @@ async function viewAdminRequestDetails(requestId) {
                     </div>
                 ` : ''}
             </div>
-            
+
+            <!-- ===== GCASH PAYMENT SECTION ===== -->
+            ${(() => {
+                const payStatus = request.paymentStatus;
+                const payAmount = request.paymentAmount;
+                const payReceipt = request.paymentReceiptUrl;
+                const payRef = request.paymentReference;
+
+                if (!payStatus && payAmount === undefined) return ''; // No payment data
+
+                const isFree = payStatus === 'free' || payAmount === 0;
+                const borderColor = payStatus === 'pending_verification'
+                    ? 'rgba(245,158,11,0.45)'
+                    : payStatus === 'confirmed'
+                    ? 'rgba(16,185,129,0.35)'
+                    : 'rgba(239,68,68,0.35)';
+                const headerBg = payStatus === 'pending_verification'
+                    ? 'rgba(245,158,11,0.08)'
+                    : payStatus === 'confirmed'
+                    ? 'rgba(16,185,129,0.08)'
+                    : 'rgba(239,68,68,0.08)';
+                const statusColor = payStatus === 'pending_verification'
+                    ? 'var(--warning-color)'
+                    : payStatus === 'confirmed'
+                    ? 'var(--success-color)'
+                    : 'var(--danger-color)';
+                const statusLabel = {
+                    'pending_verification': '⏳ Pending Verification',
+                    'confirmed': '✅ Confirmed',
+                    'rejected': '❌ Rejected',
+                    'free': '🎉 Free Document'
+                }[payStatus] || payStatus;
+
+                return `
+                <div style="margin-bottom: var(--spacing-lg); border: 2px solid ${borderColor}; border-radius: 14px; overflow: hidden;">
+                    <!-- Header -->
+                    <div style="background: ${headerBg}; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">💳</span>
+                            <strong style="font-size: 0.9rem; color: var(--text-primary);">GCash Payment</strong>
+                        </div>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: ${statusColor}; background: white; padding: 4px 10px; border-radius: 20px; border: 1px solid ${statusColor};">${statusLabel}</span>
+                    </div>
+
+                    <!-- Details -->
+                    <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Amount</span>
+                            <strong style="color: var(--primary-color); font-size: 1.05rem;">${isFree ? 'FREE' : `₱${Number(payAmount || 0).toFixed(2)}`}</strong>
+                        </div>
+                        ${payRef ? `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Reference No.</span>
+                            <code style="font-size: 0.8rem; background: var(--bg-tertiary); padding: 2px 8px; border-radius: 5px; color: var(--primary-color); font-weight: 700;">${payRef}</code>
+                        </div>` : ''}
+
+                        ${payReceipt ? `
+                        <div>
+                            <p style="margin: 0 0 8px 0; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">📎 GCash Receipt:</p>
+                            <div style="border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; background: var(--bg-tertiary);">
+                                <img
+                                    src="${payReceipt}"
+                                    alt="GCash Receipt"
+                                    style="width: 100%; max-height: 300px; object-fit: contain; cursor: pointer; display: block;"
+                                    onclick="window.open('${payReceipt}', '_blank')"
+                                >
+                                <div style="padding: 8px 12px; border-top: 1px solid var(--border-color); text-align: center;">
+                                    <a href="${payReceipt}" target="_blank" style="font-size: 0.75rem; color: var(--primary-color); font-weight: 600; text-decoration: none;">🔍 View Full Size</a>
+                                </div>
+                            </div>
+                        </div>` : (!isFree ? `
+                        <p style="font-size: 0.82rem; color: var(--warning-color); background: rgba(245,158,11,0.08); padding: 8px 12px; border-radius: 8px; margin: 0;">⚠️ No receipt has been uploaded yet.</p>` : '')}
+
+                        ${request.paymentRejectReason ? `
+                        <div style="background: rgba(239,68,68,0.06); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--danger-color);">
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--danger-color); font-weight: 600;">Rejection Reason:</p>
+                            <p style="margin: 4px 0 0 0; font-size: 0.82rem; color: var(--text-secondary);">${request.paymentRejectReason}</p>
+                        </div>` : ''}
+
+                        ${payStatus === 'pending_verification' ? `
+                        <div style="display: flex; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                            <button
+                                class="btn"
+                                onclick="verifyPayment('${request.id}')"
+                                style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 10px; padding: 11px; font-weight: 700; font-size: 0.85rem; cursor: pointer;"
+                            >✅ Verify Payment</button>
+                            <button
+                                class="btn btn-danger"
+                                onclick="rejectPaymentProof('${request.id}')"
+                                style="flex: 1; border-radius: 10px; padding: 11px; font-size: 0.85rem;"
+                            >❌ Reject Receipt</button>
+                        </div>` : ''}
+                    </div>
+                </div>`;
+            })()}
+            <!-- ===== END PAYMENT SECTION ===== -->
+
             ${request.status === 'pending' ? `
                 <div style="margin-bottom: var(--spacing-lg);">
                     <h4 style="margin-bottom: var(--spacing-md);">Update Status</h4>
@@ -408,7 +504,6 @@ async function viewAdminRequestDetails(requestId) {
                         <button class="btn btn-primary" onclick="updateRequestStatus('${request.id}', 'processing')">
                             Start Processing
                         </button>
-                        <button class="btn btn-secondary" onclick="updateRequestStatus('${request.id}', 'approved')">
                             Approve
                         </button>
                         <button class="btn btn-danger" onclick="showRejectModal('${request.id}')">
@@ -834,7 +929,149 @@ function renderReportStats(allRequests) {
     `;
 }
 
-// Make functions globally available
+// ========================================
+// VERIFY PAYMENT
+// ========================================
+
+async function verifyPayment(requestId) {
+    try {
+        const requestResult = await DB.getData('REQUESTS', requestId);
+        if (!requestResult.success) {
+            showToast('Request not found', 'error');
+            return;
+        }
+        const request = requestResult.data;
+
+        // Update request payment status
+        await DB.updateData('REQUESTS', requestId, {
+            paymentStatus: 'confirmed'
+        });
+
+        // Update payment record in PAYMENTS collection
+        const paymentsResult = await DB.getAllData('PAYMENTS');
+        if (paymentsResult.success) {
+            const payment = paymentsResult.data.find(p => p.requestId === requestId);
+            if (payment) {
+                await DB.updateData('PAYMENTS', payment.id, { status: 'confirmed' });
+            }
+        }
+
+        // Notify resident
+        await DB.createNotification({
+            userId: request.userId,
+            title: '✅ Payment Verified!',
+            message: `Your GCash payment for ${request.documentType} has been verified. Your request is now being processed.`,
+            type: 'success',
+            requestId: requestId
+        });
+
+        showToast('Payment verified successfully!', 'success');
+        closeModal();
+
+        // Refresh list
+        if (AppState.currentPage === 'admin-requests') {
+            loadAdminRequests(document.getElementById('mainContent'));
+        } else {
+            loadAdminDashboard(document.getElementById('mainContent'));
+        }
+
+    } catch (error) {
+        console.error('Error verifying payment:', error);
+        showToast('Failed to verify payment', 'error');
+    }
+}
+
+// ========================================
+// REJECT PAYMENT PROOF
+// ========================================
+
+function rejectPaymentProof(requestId) {
+    const modal = createModal('Reject GCash Receipt', `
+        <form id="rejectPaymentForm" onsubmit="handleRejectPayment(event, '${requestId}')">
+            <div style="text-align: center; margin-bottom: 16px;">
+                <div style="font-size: 2.5rem; margin-bottom: 8px;">🚫</div>
+                <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">The resident will be notified and asked to re-upload a valid receipt.</p>
+            </div>
+            <div class="form-group">
+                <label for="paymentRejectReason">Reason for Rejection <span style="color: var(--danger-color);">*</span></label>
+                <textarea
+                    id="paymentRejectReason"
+                    placeholder="e.g. Receipt is unclear, wrong amount sent, wrong reference number..."
+                    required
+                    style="min-height: 100px;"
+                ></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 16px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex: 1;">Cancel</button>
+                <button type="submit" class="btn btn-danger" style="flex: 1;">Reject Receipt</button>
+            </div>
+        </form>
+    `, []);
+    showModal(modal);
+}
+
+async function handleRejectPayment(event, requestId) {
+    event.preventDefault();
+    const reason = document.getElementById('paymentRejectReason').value.trim();
+    if (!reason) {
+        showToast('Please provide a reason', 'error');
+        return;
+    }
+
+    try {
+        const requestResult = await DB.getData('REQUESTS', requestId);
+        if (!requestResult.success) {
+            showToast('Request not found', 'error');
+            return;
+        }
+        const request = requestResult.data;
+
+        // Update request
+        await DB.updateData('REQUESTS', requestId, {
+            paymentStatus: 'rejected',
+            paymentRejectReason: reason
+        });
+
+        // Update payment record
+        const paymentsResult = await DB.getAllData('PAYMENTS');
+        if (paymentsResult.success) {
+            const payment = paymentsResult.data.find(p => p.requestId === requestId);
+            if (payment) {
+                await DB.updateData('PAYMENTS', payment.id, {
+                    status: 'rejected',
+                    rejectReason: reason
+                });
+            }
+        }
+
+        // Notify resident
+        await DB.createNotification({
+            userId: request.userId,
+            title: '❌ Payment Receipt Rejected',
+            message: `Your GCash receipt for ${request.documentType} was rejected. Reason: ${reason}. Please re-upload a valid receipt.`,
+            type: 'error',
+            requestId: requestId
+        });
+
+        showToast('Receipt rejected. Resident has been notified.', 'success');
+        closeModal();
+
+        if (AppState.currentPage === 'admin-requests') {
+            loadAdminRequests(document.getElementById('mainContent'));
+        } else {
+            loadAdminDashboard(document.getElementById('mainContent'));
+        }
+
+    } catch (error) {
+        console.error('Error rejecting payment:', error);
+        showToast('Failed to reject receipt', 'error');
+    }
+}
+
+// ========================================
+// MAKE FUNCTIONS GLOBALLY AVAILABLE
+// ========================================
+
 window.loadAdminDashboard = loadAdminDashboard;
 window.loadAdminRequests = loadAdminRequests;
 window.loadAdminReports = loadAdminReports;
@@ -843,13 +1080,8 @@ window.updateRequestStatus = updateRequestStatus;
 window.showRejectModal = showRejectModal;
 window.handleRejectRequest = handleRejectRequest;
 window.filterRequests = filterRequests;
+window.verifyPayment = verifyPayment;
+window.rejectPaymentProof = rejectPaymentProof;
+window.handleRejectPayment = handleRejectPayment;
 
-console.log('✅ Admin module functions exported:', {
-    loadAdminDashboard: typeof loadAdminDashboard,
-    loadAdminRequests: typeof loadAdminRequests,
-    loadAdminReports: typeof loadAdminReports
-});
-
-// ========================================
-// REJECT MODAL HANDLER
-// ========================================
+console.log('✅ Admin module loaded with payment verification support');
