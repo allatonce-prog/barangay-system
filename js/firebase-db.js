@@ -493,6 +493,58 @@ async function markNotificationAsRead(notificationId) {
 }
 
 // ========================================
+// SETTINGS MANAGEMENT
+// ========================================
+
+const DEFAULT_SETTINGS = {
+    documentFees: {
+        'Barangay Clearance': 50,
+        'Certificate of Residency': 30,
+        'Certificate of Indigency': 0,
+        'Cedula': 50,
+        'Barangay ID': 100,
+        'Other': 50
+    },
+    gcashNumber: '',
+    gcashName: 'Barangay Pantukan'
+};
+
+async function getSettings() {
+    try {
+        const doc = await db.collection('SETTINGS').doc('barangay').get();
+        if (!doc.exists) {
+            return { success: true, data: { ...DEFAULT_SETTINGS } };
+        }
+        // Merge with defaults so missing keys are always present
+        const data = doc.data();
+        return {
+            success: true,
+            data: {
+                ...DEFAULT_SETTINGS,
+                ...data,
+                documentFees: { ...DEFAULT_SETTINGS.documentFees, ...(data.documentFees || {}) }
+            }
+        };
+    } catch (error) {
+        console.error('Error getting settings:', error);
+        return { success: true, data: { ...DEFAULT_SETTINGS } }; // fallback to defaults
+    }
+}
+
+async function updateSettings(settingsData) {
+    try {
+        await db.collection('SETTINGS').doc('barangay').set({
+            ...settingsData,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ========================================
 // CREATE DEFAULT ADMIN
 // ========================================
 
@@ -558,6 +610,10 @@ window.DB = {
     createNotification,
     getUserNotifications,
     markNotificationAsRead,
+
+    // Settings operations
+    getSettings,
+    updateSettings,
 
     // Utilities
     generateId,

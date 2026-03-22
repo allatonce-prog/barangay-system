@@ -2,20 +2,14 @@
 // PAYMENTS MODULE - GCash Receipt Upload
 // ========================================
 
-// Fee structure per document type
-const DOCUMENT_FEES = {
+// Default fee fallbacks (overridden by Firestore SETTINGS/barangay)
+const DEFAULT_DOCUMENT_FEES = {
     'Barangay Clearance': 50,
     'Certificate of Residency': 30,
     'Certificate of Indigency': 0,
     'Cedula': 50,
     'Barangay ID': 100,
     'Other': 50
-};
-
-// !! IMPORTANT: Replace these with the actual barangay GCash details !!
-const BARANGAY_GCASH = {
-    number: '0917-XXX-XXXX',  // <-- Replace with real GCash number
-    name: 'Barangay Pantukan' // <-- Replace with registered GCash account name
 };
 
 // Holds the selected receipt file globally
@@ -26,10 +20,26 @@ let selectedReceiptFile = null;
 // Called right after request is submitted
 // ========================================
 
-function showGCashPaymentModal(requestId, documentType) {
+async function showGCashPaymentModal(requestId, documentType) {
     selectedReceiptFile = null;
 
-    const fee = DOCUMENT_FEES[documentType] || 50;
+    // Load settings from Firestore
+    let fees = DEFAULT_DOCUMENT_FEES;
+    let gcashNumber = '(not set — contact barangay office)';
+    let gcashName = 'Barangay Pantukan';
+
+    try {
+        const settingsResult = await DB.getSettings();
+        if (settingsResult.success && settingsResult.data) {
+            fees = settingsResult.data.documentFees || DEFAULT_DOCUMENT_FEES;
+            gcashNumber = settingsResult.data.gcashNumber || gcashNumber;
+            gcashName = settingsResult.data.gcashName || gcashName;
+        }
+    } catch (e) {
+        console.warn('Could not load settings, using defaults', e);
+    }
+
+    const fee = fees[documentType] ?? DEFAULT_DOCUMENT_FEES[documentType] ?? 50;
     const isFree = fee === 0;
 
     const modal = createModal('Payment Required', `
@@ -695,4 +705,4 @@ window.clearReceiptFile = clearReceiptFile;
 window.handleConfirmPayment = handleConfirmPayment;
 window.showSubmissionSummaryModal = showSubmissionSummaryModal;
 window.loadPaymentHistory = loadPaymentHistory;
-window.DOCUMENT_FEES = DOCUMENT_FEES;
+window.DEFAULT_DOCUMENT_FEES = DEFAULT_DOCUMENT_FEES;

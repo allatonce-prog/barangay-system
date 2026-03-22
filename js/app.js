@@ -132,11 +132,16 @@ function setupEventListeners() {
         logoutBtn.addEventListener('click', handleLogout);
     }
 
-    // Digital ID button
+    // Digital ID / Admin Settings button
     const digitalIdBtn = document.getElementById('digitalIdBtn');
     if (digitalIdBtn) {
         digitalIdBtn.addEventListener('click', () => {
-            showDigitalIdModal();
+            // Admin → show barangay settings; Resident → show digital ID
+            if (AppState.currentUser && AppState.currentUser.role === 'admin') {
+                showAdminSettingsModal();
+            } else {
+                showDigitalIdModal();
+            }
             document.getElementById('userMenu').style.display = 'none';
         });
     }
@@ -165,10 +170,19 @@ function setupEventListeners() {
         });
     }
 
-    // Navigation Scan Button
+    // Navigation Scan Button (Resident)
     const navScanBtn = document.getElementById('navScanBtn');
     if (navScanBtn) {
         navScanBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showScannerModal();
+        });
+    }
+
+    // Admin Scan ID Button (bottom nav)
+    const adminScanBtn = document.getElementById('adminScanBtn');
+    if (adminScanBtn) {
+        adminScanBtn.addEventListener('click', (e) => {
             e.preventDefault();
             showScannerModal();
         });
@@ -744,6 +758,18 @@ function showApp() {
         if (adminNavDropdown) adminNavDropdown.style.display = 'block';
 
         navigateToPage('admin-dashboard');
+
+        // 🔧 Swap "Digital ID" button → "Barangay Settings" for admin
+        const digitalIdBtn = document.getElementById('digitalIdBtn');
+        if (digitalIdBtn) {
+            digitalIdBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"></path>
+                </svg>
+                Barangay Settings
+            `;
+        }
     } else {
         document.getElementById('residentNav').style.display = 'flex';
         document.getElementById('adminNav').style.display = 'none';
@@ -1025,6 +1051,183 @@ function handleHardReset() {
 
 window.showSettingsModal = showSettingsModal;
 window.handleHardReset = handleHardReset;
+
+// ========================================
+// ADMIN BARANGAY SETTINGS MODAL
+// ========================================
+
+const DOCUMENT_TYPES_LIST = [
+    'Barangay Clearance',
+    'Certificate of Residency',
+    'Certificate of Indigency',
+    'Cedula',
+    'Barangay ID',
+    'Other'
+];
+
+async function showAdminSettingsModal() {
+    // Load current settings first
+    showToast('Loading settings...', 'info');
+    const result = await DB.getSettings();
+    const settings = result.data;
+
+    const modal = createModal('Barangay Settings', `
+        <div style="display: flex; flex-direction: column; gap: 0;">
+
+            <!-- Section: Document Fees -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color);">
+                    <span style="font-size: 1.2rem;">📋</span>
+                    <h4 style="margin: 0; color: var(--text-primary);">Document Fees</h4>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 14px 0;">Set the fee for each document. Check "Free" to waive the fee.</p>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    ${DOCUMENT_TYPES_LIST.map(docType => {
+                        const fee = settings.documentFees[docType];
+                        const isFree = fee === 0;
+                        const safeId = docType.replace(/[^a-z]/gi, '_');
+                        return `
+                        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border-color);">
+                            <div style="flex: 1; min-width: 0;">
+                                <p style="margin: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${docType}</p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                                <label style="display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                                    <input
+                                        type="checkbox"
+                                        id="free_${safeId}"
+                                        ${isFree ? 'checked' : ''}
+                                        onchange="toggleFeeInput('${safeId}')"
+                                        style="width: 14px; height: 14px; cursor: pointer;"
+                                    >
+                                    Free
+                                </label>
+                                <div style="display: flex; align-items: center; background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; ${isFree ? 'opacity: 0.4; pointer-events: none;' : ''}" id="feeInputWrap_${safeId}">
+                                    <span style="padding: 0 6px; color: var(--text-secondary); font-size: 0.85rem; border-right: 1px solid var(--border-color); background: var(--bg-secondary);">₱</span>
+                                    <input
+                                        type="number"
+                                        id="fee_${safeId}"
+                                        value="${isFree ? '' : fee}"
+                                        min="0"
+                                        placeholder="0"
+                                        style="width: 64px; border: none; padding: 7px 8px; font-size: 0.88rem; font-weight: 600; color: var(--primary-color); outline: none;"
+                                    >
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- Section: GCash Info -->
+            <div style="margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color);">
+                    <span style="font-size: 1.2rem;">📱</span>
+                    <h4 style="margin: 0; color: var(--text-primary);">GCash Payment Info</h4>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 14px 0;">This number will be shown to residents when they pay for their document requests.</p>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="adminGcashNumber" style="font-size: 0.85rem;">GCash Mobile Number</label>
+                        <input
+                            type="tel"
+                            id="adminGcashNumber"
+                            value="${settings.gcashNumber || ''}"
+                            placeholder="e.g. 0917-123-4567"
+                            style="font-size: 0.95rem; font-weight: 600;"
+                        >
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label for="adminGcashName" style="font-size: 0.85rem;">GCash Account Name</label>
+                        <input
+                            type="text"
+                            id="adminGcashName"
+                            value="${settings.gcashName || 'Barangay Pantukan'}"
+                            placeholder="e.g. Barangay Pantukan"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div style="display: flex; gap: 10px; padding-top: 16px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex: 1;">Cancel</button>
+                <button
+                    type="button"
+                    id="saveAdminSettingsBtn"
+                    onclick="handleSaveAdminSettings()"
+                    style="flex: 2; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; border-radius: 10px; padding: 13px; font-weight: 700; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    </svg>
+                    Save Settings
+                </button>
+            </div>
+        </div>
+    `, []);
+
+    showModal(modal);
+}
+
+function toggleFeeInput(safeId) {
+    const checkbox = document.getElementById(`free_${safeId}`);
+    const wrap = document.getElementById(`feeInputWrap_${safeId}`);
+    const input = document.getElementById(`fee_${safeId}`);
+    if (checkbox && wrap && input) {
+        const isFree = checkbox.checked;
+        wrap.style.opacity = isFree ? '0.4' : '1';
+        wrap.style.pointerEvents = isFree ? 'none' : 'auto';
+        if (isFree) input.value = '';
+    }
+}
+
+async function handleSaveAdminSettings() {
+    const btn = document.getElementById('saveAdminSettingsBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+    try {
+        // Collect fees
+        const documentFees = {};
+        DOCUMENT_TYPES_LIST.forEach(docType => {
+            const safeId = docType.replace(/[^a-z]/gi, '_');
+            const isFree = document.getElementById(`free_${safeId}`)?.checked;
+            const feeInput = document.getElementById(`fee_${safeId}`);
+            documentFees[docType] = isFree ? 0 : (parseFloat(feeInput?.value) || 0);
+        });
+
+        // Collect GCash info
+        const gcashNumber = document.getElementById('adminGcashNumber')?.value.trim();
+        const gcashName = document.getElementById('adminGcashName')?.value.trim();
+
+        if (!gcashNumber) {
+            showToast('Please enter the GCash number', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Save Settings'; }
+            return;
+        }
+
+        const result = await DB.updateSettings({ documentFees, gcashNumber, gcashName });
+
+        if (result.success) {
+            showToast('Settings saved successfully! ✅', 'success');
+            closeModal();
+        } else {
+            showToast('Failed to save settings', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showToast('Failed to save settings', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Settings'; }
+    }
+}
+
+window.showAdminSettingsModal = showAdminSettingsModal;
+window.toggleFeeInput = toggleFeeInput;
+window.handleSaveAdminSettings = handleSaveAdminSettings;
 
 // ========================================
 // DIGITAL ID MODAL

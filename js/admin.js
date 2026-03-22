@@ -39,21 +39,9 @@ async function loadAdminDashboard(container) {
 
         container.innerHTML = `
             <div class="page-header">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
-                    <div>
-                        <h2>${getDigitalGreeting(AppState.currentUser?.fullName || 'Admin')}</h2>
-                        <p>Manage document requests and view statistics</p>
-                    </div>
-                    <button class="btn btn-primary" onclick="showScannerModal()" style="display: flex; gap: 8px; align-items: center;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-                            <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-                            <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-                            <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-                            <rect x="7" y="7" width="10" height="10" />
-                        </svg>
-                        Scan ID
-                    </button>
+                <div>
+                    <h2>${getDigitalGreeting(AppState.currentUser?.fullName || 'Admin')}</h2>
+                    <p>Manage document requests and view statistics</p>
                 </div>
             </div>
             
