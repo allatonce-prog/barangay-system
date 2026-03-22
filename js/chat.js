@@ -20,7 +20,7 @@ function injectChatStyles() {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5);
-            z-index: 99998;
+            z-index: 100000;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s;
@@ -456,6 +456,7 @@ function injectChatStyles() {
                 pointer-events: none;
                 transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.35s ease;
                 transform-origin: center;
+                z-index: 100001;
             }
             .chat-window.open {
                 transform: translateY(0) scale(1);
@@ -941,11 +942,15 @@ function openConversation(conversationId, headerName, isResident, avatarUrl = ''
         }
     }
     
+    // Ensure conversation areas are visible (especially if previously hidden by admin inbox logic)
+    document.getElementById('chatInboxList').style.display = 'none';
+    document.getElementById('chatBody').style.display = 'flex';
+    document.getElementById('chatInputArea').style.display = 'flex';
+    
     if (!isResident) {
         document.getElementById('chatBackBtn').style.display = 'block';
-        document.getElementById('chatInboxList').style.display = 'none';
-        document.getElementById('chatBody').style.display = 'flex';
-        document.getElementById('chatInputArea').style.display = 'flex';
+    } else {
+        document.getElementById('chatBackBtn').style.display = 'none';
     }
 
     const chatBody = document.getElementById('chatBody');
