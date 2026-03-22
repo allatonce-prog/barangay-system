@@ -77,34 +77,33 @@ function setupEventListeners() {
         }
     });
 
-    // Logo navigation toggle
+    // Logo — navigate to dashboard (no dropdown)
     const logoBtn = document.getElementById('logoBtn');
     if (logoBtn) {
         logoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            // Close any open menus
             const navMenuDropdown = document.getElementById('navMenuDropdown');
-            if (navMenuDropdown) {
-                navMenuDropdown.style.display = navMenuDropdown.style.display === 'none' ? 'block' : 'none';
+            if (navMenuDropdown) navMenuDropdown.style.display = 'none';
+            if (userMenu) userMenu.style.display = 'none';
 
-                // Close user menu if it's open
-                if (userMenu && userMenu.style.display === 'block') {
-                    userMenu.style.display = 'none';
-                }
+            // Navigate to the appropriate home page
+            if (AppState.currentUser && AppState.currentUser.role === 'admin') {
+                navigateToPage('admin-dashboard');
+            } else {
+                navigateToPage('home');
             }
         });
     }
 
-    // Logo dropdown navigation items
+    // Logo dropdown navigation items (kept for backward compatibility)
     const navDropdownItems = document.querySelectorAll('.nav-dropdown-item');
     navDropdownItems.forEach(item => {
         item.addEventListener('click', () => {
             const page = item.getAttribute('data-page');
             navigateToPage(page);
-
             const navMenuDropdown = document.getElementById('navMenuDropdown');
-            if (navMenuDropdown) {
-                navMenuDropdown.style.display = 'none';
-            }
+            if (navMenuDropdown) navMenuDropdown.style.display = 'none';
         });
     });
 
