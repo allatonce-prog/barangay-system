@@ -770,6 +770,11 @@ function showApp() {
 
     // Load notifications
     loadNotifications();
+
+    // Start Chat
+    if (typeof window.initChatWidget === 'function') {
+        window.initChatWidget();
+    }
 }
 
 function showLoginScreen() {
