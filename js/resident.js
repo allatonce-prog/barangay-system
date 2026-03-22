@@ -340,7 +340,7 @@ async function generateTrackingNumber() {
 async function viewRequestDetails(requestId) {
     try {
         // Get request from database
-        const result = await DB.getData('requests', requestId);
+        const result = await DB.getData('REQUESTS', requestId);
 
         if (!result.success) {
             showToast('Request not found', 'error');
@@ -443,7 +443,78 @@ async function viewRequestDetails(requestId) {
                     </div>
                 ` : ''}
             </div>
-            
+
+            <!-- ===== GCASH PAYMENT SECTION (Resident View) ===== -->
+            ${(() => {
+                const payStatus = request.paymentStatus;
+                const payAmount = request.paymentAmount;
+                const payReceipt = request.paymentReceiptUrl;
+                const payRef = request.paymentReference;
+                const rejectReason = request.paymentRejectReason;
+
+                if (!payStatus && payAmount === undefined) return ''; // No payment info yet
+
+                const isFree = payStatus === 'free' || payAmount === 0;
+
+                const statusConfig = {
+                    'pending_verification': { label: '⏳ Pending Verification', color: 'var(--warning-color)', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.4)' },
+                    'confirmed':            { label: '✅ Payment Confirmed',      color: 'var(--success-color)', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.35)' },
+                    'rejected':             { label: '❌ Receipt Rejected',       color: 'var(--danger-color)',  bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.35)' },
+                    'free':                 { label: '🎉 Free Document',          color: 'var(--success-color)', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.35)' }
+                };
+                const s = statusConfig[payStatus] || { label: payStatus, color: 'var(--text-secondary)', bg: 'var(--bg-secondary)', border: 'var(--border-color)' };
+
+                return `
+                <div style="margin-bottom: var(--spacing-lg); border: 2px solid ${s.border}; border-radius: 14px; overflow: hidden;">
+                    <!-- Header -->
+                    <div style="background: ${s.bg}; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">💳</span>
+                            <strong style="font-size: 0.9rem;">GCash Payment</strong>
+                        </div>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: ${s.color}; background: white; padding: 4px 10px; border-radius: 20px; border: 1px solid ${s.color};">${s.label}</span>
+                    </div>
+
+                    <!-- Details -->
+                    <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Amount</span>
+                            <strong style="color: var(--primary-color); font-size: 1.05rem;">${isFree ? 'FREE' : `₱${Number(payAmount || 0).toFixed(2)}`}</strong>
+                        </div>
+                        ${payRef ? `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-secondary);">Reference No.</span>
+                            <code style="font-size: 0.8rem; background: var(--bg-tertiary); padding: 2px 8px; border-radius: 5px; color: var(--primary-color); font-weight: 700;">${payRef}</code>
+                        </div>` : ''}
+
+                        ${payReceipt ? `
+                        <div>
+                            <p style="margin: 0 0 8px 0; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">📎 Your Submitted Receipt:</p>
+                            <div style="border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; background: var(--bg-tertiary);">
+                                <img
+                                    src="${payReceipt}"
+                                    alt="GCash Receipt"
+                                    style="width: 100%; max-height: 260px; object-fit: contain; cursor: pointer; display: block;"
+                                    onclick="window.open('${payReceipt}', '_blank')"
+                                >
+                                <div style="padding: 8px 12px; border-top: 1px solid var(--border-color); text-align: center;">
+                                    <a href="${payReceipt}" target="_blank" style="font-size: 0.75rem; color: var(--primary-color); font-weight: 600; text-decoration: none;">🔍 View Full Size</a>
+                                </div>
+                            </div>
+                        </div>` : (!isFree ? `
+                        <p style="font-size: 0.82rem; color: var(--warning-color); background: rgba(245,158,11,0.08); padding: 8px 12px; border-radius: 8px; margin: 0;">⚠️ No receipt uploaded yet.</p>` : '')}
+
+                        ${rejectReason ? `
+                        <div style="background: rgba(239,68,68,0.06); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--danger-color);">
+                            <p style="margin: 0 0 4px 0; font-size: 0.8rem; color: var(--danger-color); font-weight: 700;">❌ Rejection Reason:</p>
+                            <p style="margin: 0; font-size: 0.82rem; color: var(--text-secondary);">${rejectReason}</p>
+                            <p style="margin: 8px 0 0 0; font-size: 0.78rem; color: var(--text-secondary);">Please re-submit your request with a valid receipt.</p>
+                        </div>` : ''}
+                    </div>
+                </div>`;
+            })()}
+            <!-- ===== END PAYMENT SECTION ===== -->
+
             <div>
                 <h4 style="margin-bottom: var(--spacing-md);">Timeline</h4>
                 <div class="timeline">
