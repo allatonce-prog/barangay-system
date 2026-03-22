@@ -144,16 +144,11 @@ const CLOUDINARY_API_SECRET = '9zwbXpSM1gYCxVWzkNRbC26LkvU';
 
 async function uploadToCloudinary(file) {
     if (!file) return null;
-
     try {
-        showToast('Uploading image...', 'info');
-
+        showToast('Uploading...', 'info');
         const timestamp = Math.round((new Date()).getTime() / 1000);
-
-        // Generate signature: SHA1(timestamp=xxxx + secret)
         const strToSign = `timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
         const signature = CryptoJS.SHA1(strToSign).toString();
-
         const formData = new FormData();
         formData.append('file', file);
         formData.append('api_key', CLOUDINARY_API_KEY);
@@ -164,20 +159,48 @@ async function uploadToCloudinary(file) {
             method: 'POST',
             body: formData
         });
-
         const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error?.message || 'Upload failed');
-        }
-
+        if (!response.ok) throw new Error(data.error?.message || 'Upload failed');
         return data.secure_url;
     } catch (error) {
         console.error('Cloudinary upload error:', error);
-        showToast('Failed to upload image: ' + error.message, 'error');
+        showToast('Failed to upload: ' + error.message, 'error');
         throw error;
     }
 }
+
+async function uploadAudioToCloudinary(blob) {
+    if (!blob) return null;
+    try {
+        showToast('Uploading voice...', 'info');
+        const timestamp = Math.round((new Date()).getTime() / 1000);
+        const strToSign = `timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
+        const signature = CryptoJS.SHA1(strToSign).toString();
+        const formData = new FormData();
+        
+        // Critical fix: Provide a filename so Cloudinary identifies the type correctly
+        formData.append('file', blob, 'voice_message.webm');
+        formData.append('api_key', CLOUDINARY_API_KEY);
+        formData.append('timestamp', timestamp);
+        formData.append('signature', signature);
+        formData.append('resource_type', 'video'); // Audio is handled via 'video' resource type
+
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error?.message || 'Upload failed');
+        return data.secure_url;
+    } catch (error) {
+        console.error('Cloudinary audio upload error:', error);
+        showToast('Failed to upload voice: ' + error.message, 'error');
+        throw error;
+    }
+}
+
+window.uploadToCloudinary = uploadToCloudinary;
+window.uploadAudioToCloudinary = uploadAudioToCloudinary;
 
 // Dynamic Greeting based on time of day
 

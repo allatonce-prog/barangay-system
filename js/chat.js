@@ -6,7 +6,12 @@ let activeChatUnsubscribe = null;
 let activeChatSummaryUnsubscribe = null;
 let activeConversationsUnsubscribe = null;
 let currentChatConversationId = null; 
-
+let pendingImageFiles = []; // Changed to array for albums
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingTimerInterval = null;
+let isRecording = false;
+let recordingStartTime = 0;
 // -------------------------
 // 1. STYLES & UI INJECTION
 // -------------------------
@@ -167,6 +172,19 @@ function injectChatStyles() {
         .chat-close-btn { right: 16px; top: 16px; font-weight: 600; }
 
         /* Chat Body & iMessage Bubbles */
+        .chat-body::-webkit-scrollbar, .chat-inbox-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-body::-webkit-scrollbar-track, .chat-inbox-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-body::-webkit-scrollbar-thumb, .chat-inbox-list::-webkit-scrollbar-thumb {
+            background: #D1D1D6;
+            border-radius: 10px;
+        }
+        .chat-body::-webkit-scrollbar-thumb:hover, .chat-inbox-list::-webkit-scrollbar-thumb:hover {
+            background: #8E8E93;
+        }
         .chat-body {
             flex: 1;
             padding: 18px 16px;
@@ -241,9 +259,10 @@ function injectChatStyles() {
         .chat-message-group {
             display: flex;
             flex-direction: column;
-            margin-bottom: 14px;
+            margin-bottom: 8px;
             position: relative;
             transition: transform 0.2s;
+            width: 100%;
         }
         .chat-message-group.dragging {
             transition: none;
@@ -281,6 +300,163 @@ function injectChatStyles() {
             40% { transform: translateY(-4px); opacity: 1; }
         }
 
+        /* Image Sending Styles */
+        .chat-image-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            border-radius: 50%;
+        }
+        .chat-image-btn:hover { background: rgba(10, 124, 255, 0.1); }
+        .chat-image-btn:active { transform: scale(0.9); }
+
+        .chat-bubble-image {
+            padding: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+        }
+        .chat-bubble-image img {
+            border-radius: 18px;
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 260px;
+        }
+        .chat-bubble-image img:active { opacity: 0.8; }
+
+        /* Voice Message Styles */
+        .chat-bubble-voice {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px !important;
+            min-width: 140px;
+        }
+        .voice-play-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            transition: 0.2s;
+        }
+        .voice-play-btn:hover { background: rgba(255,255,255,0.3); }
+        .chat-bubble.received .voice-play-btn { background: rgba(0,0,0,0.05); color: #0A7CFF; }
+        
+        .voice-progress-wrap {
+            flex: 1;
+            height: 3px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            position: relative;
+        }
+        .chat-bubble.received .voice-progress-wrap { background: rgba(0,0,0,0.1); }
+        
+        .voice-progress-bar {
+            position: absolute;
+            left: 0; top: 0; height: 100%;
+            width: 0%;
+            background: white;
+            border-radius: 2px;
+        }
+        .chat-bubble.received .voice-progress-bar { background: #0A7CFF; }
+
+        .voice-timer {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.8);
+            font-family: monospace;
+        }
+        .chat-bubble.received .voice-timer { color: #8E8E93; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Album Grid Styles */
+        .chat-album-grid {
+            display: grid;
+            gap: 2px;
+            width: 100%;
+            max-width: 250px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.05);
+            border: 0.5px solid rgba(0,0,0,0.1);
+        }
+        .chat-album-grid img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .chat-album-grid img:hover { opacity: 0.9; }
+        
+        .chat-album-grid.grid-1 img { aspect-ratio: unset; max-height: 300px; }
+        .chat-album-grid.grid-2 { grid-template-columns: 1fr 1fr; }
+        .chat-album-grid.grid-2 img { aspect-ratio: 1; }
+        
+        .chat-album-grid.grid-3 { grid-template-columns: 1fr 1fr; }
+        .chat-album-grid.grid-3 img { aspect-ratio: 1; }
+        .chat-album-grid.grid-3 img:first-child { grid-column: span 2; aspect-ratio: 1.8 / 1; }
+        
+        .chat-album-grid.grid-4 { grid-template-columns: 1fr 1fr; }
+        .chat-album-grid.grid-4 img { aspect-ratio: 1; }
+
+        .preview-thumb {
+            position: relative; 
+            width: 64px; 
+            height: 64px; 
+            flex-shrink: 0;
+        }
+        .preview-thumb img {
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            border-radius: 12px; 
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .preview-thumb .remove-btn {
+            position: absolute; 
+            top: -6px; 
+            right: -6px; 
+            background: #FF3B30; 
+            color: white; 
+            border: 2px solid white; 
+            border-radius: 50%; 
+            width: 20px; 
+            height: 20px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            font-size: 12px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+
+        .image-sending-indicator {
+            align-self: flex-end;
+            font-size: 0.75rem;
+            color: #8E8E93;
+            margin: -6px 16px 10px 0;
+            display: none;
+        }
+
         .reaction-menu {
             position: fixed;
             background: rgba(255, 255, 255, 0.95);
@@ -297,19 +473,41 @@ function injectChatStyles() {
             opacity: 0;
             pointer-events: none;
         }
-        .reaction-menu.active {
-            transform: scale(1);
-            opacity: 1;
-            pointer-events: auto;
+        /* Photo Viewer Lightbox */
+        .chat-photo-viewer {
+            position: fixed;
+            top: 0; left: 0; 
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98);
+            z-index: 200001;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
-        .react-btn {
-            font-size: 1.6rem;
+        .chat-photo-viewer img {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            transform: scale(0.9);
+        }
+        .chat-photo-viewer.active { display: flex; }
+        .chat-photo-viewer.active img { transform: scale(1.0); }
+        
+        .chat-photo-viewer-close {
+            position: absolute;
+            top: 40px; right: 24px;
+            background: rgba(255,255,255,0.15);
+            color: white; border: none;
+            width: 48px; height: 48px;
+            border-radius: 50%;
             cursor: pointer;
-            transition: transform 0.2s;
-            user-select: none;
-        }
-        .react-btn:hover {
-            transform: scale(1.3);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10;
         }
 
         /* Read Status */
@@ -544,6 +742,28 @@ function initChatWidget() {
     `;
     document.body.appendChild(reactMenu);
 
+    // The Photo Viewer element
+    const viewer = document.createElement('div');
+    viewer.className = 'chat-photo-viewer';
+    viewer.id = 'chatPhotoViewer';
+    viewer.innerHTML = `
+        <button class="chat-photo-viewer-close" onclick="closeChatPhoto()">✕</button>
+        <img id="chatViewerImg" src="">
+    `;
+    viewer.onclick = (e) => { if(e.target === viewer) closeChatPhoto(); };
+    document.body.appendChild(viewer);
+
+    window.viewChatPhoto = (url) => {
+        const v = document.getElementById('chatPhotoViewer');
+        const img = document.getElementById('chatViewerImg');
+        img.src = url;
+        v.classList.add('active');
+    };
+    window.closeChatPhoto = () => {
+        const v = document.getElementById('chatPhotoViewer');
+        v.classList.remove('active');
+    };
+
     // Hide reaction menu on tap outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.reaction-menu') && !e.target.closest('.chat-bubble')) {
@@ -591,8 +811,16 @@ function initChatWidget() {
         </div>
 
         <!-- Inbox View (Admin Only) -->
-        <div class="chat-inbox-list" id="chatInboxList" style="display: none;">
-            <div style="padding: 30px; text-align: center; color: var(--text-secondary); font-size: 0.95rem;">Loading chats...</div>
+        <div class="chat-inbox-view" id="chatInboxView" style="display: none; height: 100%; flex-direction: column;">
+            <div class="chat-search-wrap" style="padding: 10px 16px; background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 5;">
+                <div style="position: relative; display: flex; align-items: center;">
+                    <svg style="position: absolute; left: 12px; color: #8E8E93;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="chatInboxSearch" placeholder="Search" style="width: 100%; background: #F2F2F7; border: none; padding: 10px 12px 10px 38px; border-radius: 12px; font-size: 1rem; outline: none; transition: 0.2s;">
+                </div>
+            </div>
+            <div class="chat-inbox-list" id="chatInboxList" style="flex: 1; overflow-y: auto;">
+                <div style="padding: 30px; text-align: center; color: var(--text-secondary); font-size: 0.95rem;">Loading chats...</div>
+            </div>
         </div>
 
         <!-- Conversation View -->
@@ -606,9 +834,26 @@ function initChatWidget() {
         </div>
         
         <div class="chat-input-area" id="chatInputArea">
-            <div class="chat-input-wrapper">
+            <input type="file" id="chatImageInput" accept="image/*" multiple style="display: none;">
+            <div id="chatImagePreview" style="display: none; padding: 12px 16px; background: #fff; border-top: 0.5px solid rgba(0,0,0,0.05); overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                <div id="chatPreviewList" style="display: flex; gap: 10px;">
+                    <!-- Thumbnails go here -->
+                </div>
+            </div>
+            <div id="chatRecordingLayer" style="display: none; padding: 12px 16px; background: #fff; border-top: 0.5px solid rgba(0,0,0,0.05); align-items: center; gap: 12px;">
+                <div style="background: #FF3B30; width: 10px; height: 10px; border-radius: 50%; animation: pulse 1s infinite;"></div>
+                <div id="chatRecordingTimer" style="font-size: 0.95rem; color: #FF3B30; font-family: monospace; flex: 1; font-weight: 600;">0:00</div>
+                <button id="chatCancelRecord" style="background: none; border: none; color: #8E8E93; font-size: 0.95rem; cursor: pointer; padding: 5px 10px; font-weight: 500;">Cancel</button>
+            </div>
+            <div class="chat-input-wrapper" id="chatInputWrapper">
+                <button class="chat-image-btn" id="chatImageBtn" title="Send photo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A7CFF" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                </button>
+                <button class="chat-mic-btn" id="chatMicBtn" title="Record voice" style="background: none; border: none; padding: 8px 12px 8px 4px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A7CFF" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
                 <textarea class="chat-input" id="chatInputMessage" placeholder="Type a message..." rows="1"></textarea>
-                <button class="chat-send-btn" id="chatSendBtn">
+                <button class="chat-send-btn" id="chatSendBtn" style="display: none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
                 </button>
             </div>
@@ -625,7 +870,7 @@ function initChatWidget() {
         
         const isAdmin = AppState.currentUser.role === 'admin';
         if (isAdmin && !currentChatConversationId) {
-            document.getElementById('chatInboxList').style.display = 'block';
+            document.getElementById('chatInboxView').style.display = 'flex';
             document.getElementById('chatBody').style.display = 'none';
             document.getElementById('chatInputArea').style.display = 'none';
             document.getElementById('chatHeaderName').textContent = 'Messages';
@@ -651,6 +896,7 @@ function initChatWidget() {
         }, 400);
 
         document.getElementById('chatReactionMenu').classList.remove('active');
+        document.getElementById('chatInboxSearch').value = ''; // Reset search
         clearTimeout(typingTimer);
         setTypingStatus(false);
         setTimeout(() => { 
@@ -733,6 +979,8 @@ function initChatWidget() {
     let swipeTicking = false;
 
     chatBody.addEventListener('touchstart', e => {
+        // Only activate swipe-to-reveal if user taps on a bubble
+        if (!e.target.closest('.chat-bubble')) return;
         startX = e.touches[0].clientX;
         isSwiping = true;
     });
@@ -787,7 +1035,8 @@ function initChatWidget() {
         if (activeChatSummaryUnsubscribe) { activeChatSummaryUnsubscribe(); activeChatSummaryUnsubscribe = null; }
         
         document.getElementById('chatReactionMenu').classList.remove('active');
-        document.getElementById('chatInboxList').style.display = 'block';
+        document.getElementById('chatInboxSearch').value = ''; // Reset search focus
+        document.getElementById('chatInboxView').style.display = 'flex';
         document.getElementById('chatBody').style.display = 'none';
         document.getElementById('chatInputArea').style.display = 'none';
         document.getElementById('chatHeaderName').textContent = 'Messages';
@@ -821,13 +1070,164 @@ function initChatWidget() {
         } catch (e) { }
     };
 
-    document.getElementById('chatInputMessage').addEventListener('input', () => {
+
+    // Real-time Search Logic
+    document.getElementById('chatInboxSearch').addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const items = document.querySelectorAll('.chat-inbox-item');
+        
+        items.forEach(item => {
+            const name = item.querySelector('.inbox-item-name').textContent.toLowerCase();
+            if (name.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // Voice Messaging Logic
+    const micBtn = document.getElementById('chatMicBtn');
+    const sendBtn = document.getElementById('chatSendBtn');
+    const messageInput = document.getElementById('chatInputMessage');
+    const recordingLayer = document.getElementById('chatRecordingLayer');
+    const inputWrapper = document.getElementById('chatInputWrapper');
+    const cancelRecordBtn = document.getElementById('chatCancelRecord');
+
+    messageInput.addEventListener('input', () => {
+        // Typing status logic
         window.setTypingStatus(true);
         clearTimeout(typingTimer);
         typingTimer = setTimeout(() => {
             window.setTypingStatus(false);
         }, typingInterval);
+
+        // Send button visibility logic
+        const hasText = messageInput.value.trim().length > 0;
+        const hasImages = pendingImageFiles.length > 0;
+        if (hasText || hasImages) {
+            sendBtn.style.display = 'flex';
+        } else {
+            sendBtn.style.display = 'none';
+        }
     });
+
+    // Helper to start recording
+    const startRecording = async (e) => {
+        if (e) e.preventDefault();
+        if (isRecording) return;
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            isRecording = true;
+            recordingStartTime = Date.now();
+
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            mediaRecorder.onstop = async () => {
+                const duration = Date.now() - recordingStartTime;
+                const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                
+                // Final safety: don't send if cancelled or too short (< 0.5s)
+                if (audioChunks.length > 0 && recordingLayer.dataset.cancelled === 'false' && duration > 500) {
+                     try {
+                         const audioUrl = await window.uploadAudioToCloudinary(audioBlob);
+                         if (audioUrl) {
+                             await sendMessage(null, audioUrl);
+                         }
+                     } catch (err) {
+                         console.error('Audio upload failed:', err);
+                     }
+                }
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            // UI updates
+            recordingLayer.style.display = 'flex';
+            inputWrapper.style.display = 'none';
+            recordingLayer.dataset.cancelled = 'false';
+            
+            let seconds = 0;
+            const timerEl = document.getElementById('chatRecordingTimer');
+            timerEl.textContent = '0:00';
+            recordingTimerInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+
+            mediaRecorder.start(200); // Collect data every 200ms
+        } catch (err) {
+            console.error('Mic access denied:', err);
+            showToast('Permission denied. Please allow microphone access.', 'error');
+            isRecording = false;
+        }
+    };
+
+    const stopRecording = (cancelled = false) => {
+        if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+        
+        isRecording = false;
+        if (cancelled) recordingLayer.dataset.cancelled = 'true';
+        
+        mediaRecorder.stop();
+        recordingLayer.style.display = 'none';
+        inputWrapper.style.display = 'flex';
+        clearInterval(recordingTimerInterval);
+    };
+
+    micBtn.addEventListener('mousedown', startRecording);
+    micBtn.addEventListener('mouseup', (e) => { e.preventDefault(); stopRecording(false); });
+    micBtn.addEventListener('mouseleave', (e) => { if(isRecording) stopRecording(true); });
+    
+    // Mobile touch support
+    micBtn.addEventListener('touchstart', startRecording, {passive: false});
+    micBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(false); }, {passive: false});
+    micBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); stopRecording(true); }, {passive: false});
+
+    cancelRecordBtn.addEventListener('click', () => stopRecording(true));
+
+    // Image Upload Logic
+    const imageInput = document.getElementById('chatImageInput');
+    const imageBtn = document.getElementById('chatImageBtn');
+
+    imageBtn.addEventListener('click', () => imageInput.click());
+
+    imageInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        files.forEach(file => {
+            const fileId = Math.random().toString(36).substr(2, 9);
+            pendingImageFiles.push({ id: fileId, file: file });
+            
+            const thumb = document.createElement('div');
+            thumb.className = 'preview-thumb';
+            thumb.id = `thumb-${fileId}`;
+            thumb.innerHTML = `
+                <img src="${URL.createObjectURL(file)}">
+                <button class="remove-btn" onclick="removeChatPreview('${fileId}')">✕</button>
+            `;
+            document.getElementById('chatPreviewList').appendChild(thumb);
+        });
+
+        document.getElementById('chatImagePreview').style.display = 'block';
+        micBtn.style.display = 'none';
+        sendBtn.style.display = 'flex';
+        imageInput.value = '';
+    });
+
+    window.removeChatPreview = (fileId) => {
+        pendingImageFiles = pendingImageFiles.filter(item => item.id !== fileId);
+        const thumb = document.getElementById(`thumb-${fileId}`);
+        if (thumb) thumb.remove();
+        
+        if (pendingImageFiles.length === 0) {
+            document.getElementById('chatImagePreview').style.display = 'none';
+        }
+    };
 
     // Start Realtime Listeners
     startGlobalChatListener();
@@ -1010,7 +1410,7 @@ function openConversation(conversationId, headerName, isResident, avatarUrl = ''
     }
     
     // Ensure conversation areas are visible (especially if previously hidden by admin inbox logic)
-    document.getElementById('chatInboxList').style.display = 'none';
+    document.getElementById('chatInboxView').style.display = 'none';
     document.getElementById('chatBody').style.display = 'flex';
     document.getElementById('chatInputArea').style.display = 'flex';
     
@@ -1099,7 +1499,7 @@ function openConversation(conversationId, headerName, isResident, avatarUrl = ''
                 
                 groupHtml += `
                     <div class="chat-timestamp">${timeStr}</div>
-                    <div class="chat-bubble ${isMine ? 'sent' : 'received'}"
+                    <div class="chat-bubble ${isMine ? 'sent' : 'received'} ${msg.type === 'image' || msg.type === 'album' ? 'chat-bubble-image' : ''}"
                          oncontextmenu="showReactions(event, '${doc.id}')"
                          ondblclick="submitReactionDirect('❤️', '${doc.id}', '${msg.reaction || ''}')"
                          onmousedown="handleReactionHoldStart(event, '${doc.id}')" 
@@ -1108,7 +1508,21 @@ function openConversation(conversationId, headerName, isResident, avatarUrl = ''
                          ontouchstart="handleDoubleTapAndHoldStart(event, '${doc.id}', '${msg.reaction || ''}')" 
                          ontouchend="handleReactionHoldEnd()" 
                          ontouchcancel="handleReactionHoldEnd()">
-                        ${msg.text}
+                        ${msg.type === 'album' ? `
+                            <div class="chat-album-grid grid-${Math.min(msg.images.length, 4)}">
+                                ${msg.images.map(img => `<img src="${img}" onclick="window.viewChatPhoto('${img}')" alt="Album image">`).join('')}
+                            </div>
+                        ` : (msg.type === 'image' ? `<img src="${msg.image}" onclick="window.viewChatPhoto('${msg.image}')" alt="Image">` : (msg.type === 'voice' ? `
+                            <div class="chat-bubble-voice">
+                                <button class="voice-play-btn" onclick="window.toggleVoicePlayback(this, '${msg.audio}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                </button>
+                                <div class="voice-progress-wrap">
+                                    <div class="voice-progress-bar"></div>
+                                </div>
+                                <div class="voice-timer">VOICE</div>
+                            </div>
+                        ` : msg.text))}
                         ${msg.reaction ? `<div class="chat-reaction" style="${reactionPos}">${msg.reaction}</div>` : ''}
                     </div>
                 `;
@@ -1129,14 +1543,45 @@ function openConversation(conversationId, headerName, isResident, avatarUrl = ''
         });
 }
 
-async function sendMessage() {
+async function sendMessage(manualText = null, manualAudioUrl = null) {
     if (!currentChatConversationId) return;
     
     const input = document.getElementById('chatInputMessage');
-    const text = input.value.trim();
-    if (!text) return;
+    const text = manualText || input.value.trim();
+    if (!text && pendingImageFiles.length === 0 && !manualAudioUrl) return;
+
+    const previewContainer = document.getElementById('chatImagePreview');
+    previewContainer.style.display = 'none';
+    document.getElementById('chatPreviewList').innerHTML = '';
+    
+    // Reset buttons
+    document.getElementById('chatSendBtn').style.display = 'none';
+    
+    // If there's pending images, upload them
+    let finalImageUrls = [];
+    if (pendingImageFiles.length > 0) {
+        try {
+            const sendBtn = document.getElementById('chatSendBtn');
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span style="font-size: 10px;">...</span>';
+            
+            const filesToUpload = pendingImageFiles.map(item => item.file);
+            pendingImageFiles = []; // Clear now
+            
+            // Upload all concurrently
+            finalImageUrls = await Promise.all(filesToUpload.map(f => uploadToCloudinary(f)));
+            
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
+        } catch (e) {
+            console.error('Album upload failed:', e);
+            showToast('Failed to upload some images', 'error');
+            return;
+        }
+    }
 
     input.value = '';
+    input.style.height = 'auto'; // Reset height
     
     // Clear typing status immediately
     if (window.setTypingStatus) window.setTypingStatus(false);
@@ -1146,17 +1591,31 @@ async function sendMessage() {
     try {
         const chatRef = window.DB.firestore.collection('CHATS').doc(currentChatConversationId);
         
+        let msgType = 'text';
+        if (manualAudioUrl) msgType = 'voice';
+        else if (finalImageUrls.length === 1) msgType = 'image';
+        else if (finalImageUrls.length > 1) msgType = 'album';
+
         // Add message
         await chatRef.collection('MESSAGES').add({
             senderId: AppState.currentUser.id,
             text: text,
+            image: finalImageUrls.length === 1 ? finalImageUrls[0] : null,
+            images: finalImageUrls.length > 1 ? finalImageUrls : null,
+            audio: manualAudioUrl || null,
+            type: msgType,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             isAdmin: isAdmin
         });
 
         // Update conversation summary
+        let lastMsg = text;
+        if (manualAudioUrl) lastMsg = '🎤 Voice Message';
+        else if (finalImageUrls.length === 1) lastMsg = '📷 Photo';
+        else if (finalImageUrls.length > 1) lastMsg = `📷 ${finalImageUrls.length} Photos`;
+
         const updateData = {
-            lastMessage: text,
+            lastMessage: lastMsg,
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastSenderId: AppState.currentUser.id
         };
@@ -1179,7 +1638,54 @@ async function sendMessage() {
 }
 
 // Initialize on load if logged in, or export for login hook
+function toggleVoicePlayback(btn, url) {
+    let audio = btn._audio;
+    const progress = btn.parentElement.querySelector('.voice-progress-bar');
+    const timer = btn.parentElement.querySelector('.voice-timer');
+
+    if (!audio) {
+        audio = new Audio(url);
+        btn._audio = audio;
+        
+        audio.ontimeupdate = () => {
+            if (audio.duration) {
+                const perc = (audio.currentTime / audio.duration) * 100;
+                progress.style.width = perc + '%';
+            }
+            
+            const mins = Math.floor(audio.currentTime / 60);
+            const secs = Math.floor(audio.currentTime % 60);
+            timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+        
+        audio.onended = () => {
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+            progress.style.width = '0%';
+            timer.textContent = 'VOICE';
+        };
+
+        audio.onloadedmetadata = () => {
+             const mins = Math.floor(audio.duration / 60);
+             const secs = Math.floor(audio.duration % 60);
+             timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+    }
+
+    if (audio.paused) {
+        document.querySelectorAll('audio').forEach(a => a.pause()); // Pause others
+        audio.play();
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+    } else {
+        audio.pause();
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+    }
+}
+
+window.toggleVoicePlayback = toggleVoicePlayback;
 window.initChatWidget = initChatWidget;
+window.submitReaction = submitReaction;
+window.removeChatPreview = removeChatPreview;
+
 // We wait 1 second for firebase to fully auth before initializing
 setTimeout(() => {
     if (window.AppState && window.AppState.currentUser) {
