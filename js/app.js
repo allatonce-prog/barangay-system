@@ -1060,7 +1060,6 @@ const DOCUMENT_TYPES_LIST = [
     'Certificate of Residency',
     'Certificate of Indigency',
     'Cedula',
-    'Barangay ID',
     'Other'
 ];
 

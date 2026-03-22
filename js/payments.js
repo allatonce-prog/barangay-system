@@ -8,7 +8,6 @@ const DEFAULT_DOCUMENT_FEES = {
     'Certificate of Residency': 30,
     'Certificate of Indigency': 0,
     'Cedula': 50,
-    'Barangay ID': 100,
     'Other': 50
 };
 
