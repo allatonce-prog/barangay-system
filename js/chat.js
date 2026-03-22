@@ -249,6 +249,38 @@ function injectChatStyles() {
             transition: none;
         }
 
+        /* Typing Indicator dots animation */
+        .typing-indicator {
+            display: none;
+            padding: 8px 12px;
+            background: #E5E5EA;
+            border-radius: 18px 18px 18px 4px;
+            width: fit-content;
+            margin: 0 16px 10px;
+            align-self: flex-start;
+            animation: fadeIn 0.2s ease;
+        }
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            height: 12px;
+        }
+        .typing-dot {
+            width: 5px;
+            height: 5px;
+            background: #8E8E93;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.6; }
+            40% { transform: translateY(-4px); opacity: 1; }
+        }
+
         .reaction-menu {
             position: fixed;
             background: rgba(255, 255, 255, 0.95);
@@ -565,6 +597,13 @@ function initChatWidget() {
 
         <!-- Conversation View -->
         <div class="chat-body" id="chatBody"></div>
+        <div id="chatTypingIndicator" class="typing-indicator">
+             <div class="typing-dots">
+                 <div class="typing-dot"></div>
+                 <div class="typing-dot"></div>
+                 <div class="typing-dot"></div>
+             </div>
+        </div>
         
         <div class="chat-input-area" id="chatInputArea">
             <div class="chat-input-wrapper">
@@ -612,6 +651,8 @@ function initChatWidget() {
         }, 400);
 
         document.getElementById('chatReactionMenu').classList.remove('active');
+        clearTimeout(typingTimer);
+        setTypingStatus(false);
         setTimeout(() => { 
             btn.style.display = 'flex'; 
         }, 300);
@@ -760,6 +801,32 @@ function initChatWidget() {
             e.preventDefault();
             sendMessage();
         }
+    });
+
+    // Realtime Typing Logic
+    let typingTimer = null;
+    const typingInterval = 2500; 
+    let isCurrentlyTyping = false;
+
+    window.setTypingStatus = async (status) => {
+        if (!currentChatConversationId) return;
+        if (isCurrentlyTyping === status) return;
+        isCurrentlyTyping = status;
+        
+        const field = AppState.currentUser.role === 'admin' ? 'typingAdmin' : 'typingUser';
+        try {
+            await window.DB.firestore.collection('CHATS').doc(currentChatConversationId).update({
+                [field]: status
+            });
+        } catch (e) { }
+    };
+
+    document.getElementById('chatInputMessage').addEventListener('input', () => {
+        window.setTypingStatus(true);
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            window.setTypingStatus(false);
+        }, typingInterval);
     });
 
     // Start Realtime Listeners
@@ -979,6 +1046,22 @@ function openConversation(conversationId, headerName, isResident, avatarUrl = ''
                     if (headerAvatar) headerAvatar.src = data.adminAvatar;
                 }
 
+                // Update Typing Indicator
+                const otherTypingField = isResident ? 'typingAdmin' : 'typingUser';
+                const indicator = document.getElementById('chatTypingIndicator');
+                if (indicator) {
+                    const isOtherTyping = data[otherTypingField] || false;
+                    const currentlyShowing = indicator.style.display === 'block';
+                    
+                    if (isOtherTyping !== currentlyShowing) {
+                        indicator.style.display = isOtherTyping ? 'block' : 'none';
+                        if (isOtherTyping) {
+                            const chatBody = document.getElementById('chatBody');
+                            chatBody.scrollTop = chatBody.scrollHeight;
+                        }
+                    }
+                }
+
                 // Evaluate Read status based on the other person's unread counts
                 const otherUnreadField = isResident ? 'unreadAdmin' : 'unreadUser';
                 const isRead = data[otherUnreadField] === 0;
@@ -1054,6 +1137,9 @@ async function sendMessage() {
     if (!text) return;
 
     input.value = '';
+    
+    // Clear typing status immediately
+    if (window.setTypingStatus) window.setTypingStatus(false);
     const isAdmin = AppState.currentUser.role === 'admin';
     const residentName = AppState.currentUser.fullName;
     
