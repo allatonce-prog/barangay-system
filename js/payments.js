@@ -19,7 +19,7 @@ let selectedReceiptFile = null;
 // Called right after request is submitted
 // ========================================
 
-async function showGCashPaymentModal(requestId, documentType) {
+async function showGCashPaymentModal(documentType) {
     selectedReceiptFile = null;
 
     // Load settings from Firestore
@@ -204,7 +204,7 @@ async function showGCashPaymentModal(requestId, documentType) {
                 <button
                     type="button"
                     id="confirmPaymentBtn"
-                    onclick="handleConfirmPayment('${requestId}', '${documentType}', ${isFree})"
+                    onclick="handleConfirmPayment('${documentType}', ${isFree})"
                     style="
                         flex: 2;
                         background: linear-gradient(135deg, #007aff, #0055d4);
@@ -312,7 +312,15 @@ function clearReceiptFile() {
 // STEP 2: HANDLE CONFIRM PAYMENT
 // ========================================
 
-async function handleConfirmPayment(requestId, documentType, isFree) {
+async function handleConfirmPayment(documentType, isFree) {
+    // 1. Get the pending request data that was stored in resident.js
+    const requestData = window.pendingRequestData;
+    if (!requestData) {
+        showToast('Request data is missing. Please start over.', 'error');
+        closeModal();
+        return;
+    }
+
     // Validate: receipt required unless free
     if (!isFree && !selectedReceiptFile) {
         showToast('Please upload your GCash receipt screenshot', 'error');
@@ -331,7 +339,21 @@ async function handleConfirmPayment(requestId, documentType, isFree) {
 
     try {
         let receiptImageUrl = null;
-        const fee = DOCUMENT_FEES[documentType] || 0;
+        let fee = 0;
+
+        // Fallback to default fee if fetching settings fails
+        if (!isFree) {
+            try {
+                const settingsResult = await DB.getSettings();
+                if (settingsResult.success && settingsResult.data && settingsResult.data.documentFees) {
+                    fee = settingsResult.data.documentFees[documentType] ?? DEFAULT_DOCUMENT_FEES[documentType] ?? 50;
+                } else {
+                    fee = DEFAULT_DOCUMENT_FEES[documentType] || 50;
+                }
+            } catch (e) {
+                fee = DEFAULT_DOCUMENT_FEES[documentType] || 50;
+            }
+        }
 
         // Upload receipt to Cloudinary (if not free)
         if (!isFree && selectedReceiptFile) {
@@ -339,12 +361,31 @@ async function handleConfirmPayment(requestId, documentType, isFree) {
             receiptImageUrl = await uploadToCloudinary(selectedReceiptFile);
         }
 
+        btn.innerHTML = `
+            <div style="width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            Saving request...
+        `;
+
         // Generate payment reference
         const referenceNumber = `PAY-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
-        // Save payment to Firestore PAYMENTS collection
+        // Attach payment info directly to the firestore request data before saving
+        requestData.paymentStatus = isFree ? 'confirmed' : 'pending_verification';
+        requestData.paymentReceiptUrl = receiptImageUrl;
+        requestData.paymentReference = referenceNumber;
+        requestData.paymentAmount = fee;
+
+        // 2. NOW save the Request to Firestore
+        const requestResult = await DB.createRequest(requestData);
+        if (!requestResult.success) {
+            throw new Error(requestResult.error || 'Failed to create request');
+        }
+
+        const newRequestId = requestResult.id;
+
+        // 3. Save Payment to Firestore PAYMENTS collection
         const paymentData = {
-            requestId: requestId,
+            requestId: newRequestId,
             userId: AppState.currentUser.id,
             userName: AppState.currentUser.fullName,
             documentType: documentType,
@@ -358,32 +399,27 @@ async function handleConfirmPayment(requestId, documentType, isFree) {
 
         await DB.createPayment(paymentData);
 
-        // Update the request in Firestore with payment info
-        await DB.updateData('REQUESTS', requestId, {
-            paymentStatus: isFree ? 'confirmed' : 'pending_verification',
-            paymentReceiptUrl: receiptImageUrl,
-            paymentReference: referenceNumber,
-            paymentAmount: fee
-        });
+        // Clear the global data
+        window.pendingRequestData = null;
 
-        // Notify admin about payment
+        // Notify admin about payment/request
         if (!isFree) {
             await DB.createNotification({
                 userId: 'role:admin',
                 title: '💳 Payment Receipt Submitted',
                 message: `${AppState.currentUser.fullName} submitted a GCash receipt for ${documentType}. Please verify.`,
                 type: 'info',
-                requestId: requestId,
+                requestId: newRequestId,
                 link: 'admin-requests'
             });
         }
 
         // Show loading screen before summary
-        showPaymentLoadingScreen(requestId);
+        showPaymentLoadingScreen(newRequestId);
 
     } catch (error) {
         console.error('Payment confirm error:', error);
-        showToast('Failed to submit payment. Please try again.', 'error');
+        showToast('Failed to complete submission. Please try again.', 'error');
 
         // Re-enable button
         if (btn) {
@@ -523,7 +559,7 @@ async function showSubmissionSummaryModal(requestId) {
         }
 
         const request = result.data;
-        const fee = DOCUMENT_FEES[request.documentType] || 0;
+        const fee = request.paymentAmount || 0;
         const isFree = fee === 0;
 
         const modal = createModal('Submission Review', `

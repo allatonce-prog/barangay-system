@@ -111,7 +111,7 @@ function showNewRequestModal() {
             
             <div class="modal-footer" style="border: none; padding: var(--spacing-lg) 0 0 0;">
                 <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="submitReqBtn">Submit Request</button>
+                <button type="submit" class="btn btn-primary" id="submitReqBtn">Next</button>
             </div>
         </form>
     `, []);
@@ -256,12 +256,12 @@ async function handleNewRequest(event) {
             }
         }
 
-        submitBtn.textContent = 'Submitting...';
+        submitBtn.textContent = 'Preparing Payment...';
 
         // Generate tracking number
         const trackingNumber = await generateTrackingNumber();
 
-        // Create request object
+        // Create request object (DO NOT SAVE TO FIRESTORE YET)
         const request = {
             trackingNumber: trackingNumber,
             userId: AppState.currentUser.id,
@@ -288,34 +288,27 @@ async function handleNewRequest(event) {
             ]
         };
 
-        // Save to Firestore
-        const result = await DB.createRequest(request);
-
-        if (result.success) {
-            request.id = result.id;
-
-            // Reset form
-            const form = document.getElementById('newRequestForm');
-            if (form) {
-                form.reset();
-                selectedFiles = [];
-            }
-
-            // Close the request form modal
-            closeModal();
-
-            // ✅ Open GCash Payment Modal immediately after submission
-            setTimeout(() => {
-                showGCashPaymentModal(result.id, documentType);
-            }, 300);
-
-        } else {
-            showToast(result.error || 'Failed to submit request', 'error');
+        // Reset form
+        const form = document.getElementById('newRequestForm');
+        if (form) {
+            form.reset();
+            selectedFiles = [];
         }
+
+        // Close request modal, save data globally, and go to payment step
+        closeModal();
+        
+        window.pendingRequestData = request;
+
+        setTimeout(() => {
+            if (typeof showGCashPaymentModal === 'function') {
+                showGCashPaymentModal(documentType);
+            }
+        }, 300);
+
     } catch (error) {
         console.error('Submit request error:', error);
-        showToast('Failed to submit request', 'error');
-    } finally {
+        showToast('Failed to prepare request', 'error');
         submitBtn.textContent = originalBtnText;
         submitBtn.disabled = false;
     }
