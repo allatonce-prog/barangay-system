@@ -207,10 +207,7 @@ setInterval(() => {
     const platform = detectPlatform();
     if (platform.isStandalone) {
         hideEverything();
-    } else if (document.getElementById('installPrompt') && document.getElementById('installPrompt').style.display === 'none') {
-        // If somehow hidden but not installed, show it
-        showInstallPrompt();
     }
-}, 5000);
+}, 15000); // 15 seconds is enough
 
 console.log('[PWA] Mandatory Install Module loaded');

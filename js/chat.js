@@ -1044,7 +1044,7 @@ function initChatWidget() {
         document.getElementById('chatBackBtn').style.display = 'none';
     });
 
-    document.getElementById('chatSendBtn').addEventListener('click', sendMessage);
+    document.getElementById('chatSendBtn').addEventListener('click', () => sendMessage());
     document.getElementById('chatInputMessage').addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -1684,7 +1684,21 @@ function toggleVoicePlayback(btn, url) {
 window.toggleVoicePlayback = toggleVoicePlayback;
 window.initChatWidget = initChatWidget;
 window.submitReaction = submitReaction;
-window.removeChatPreview = removeChatPreview;
+window.removeChatPreview = (fileId) => {
+    pendingImageFiles = pendingImageFiles.filter(item => item.id !== fileId);
+    const thumb = document.getElementById(`thumb-${fileId}`);
+    if (thumb) thumb.remove();
+    
+    if (pendingImageFiles.length === 0) {
+        document.getElementById('chatImagePreview').style.display = 'none';
+        // Only toggle mic back if input is empty
+        const messageInput = document.getElementById('chatInputMessage');
+        if (!messageInput.value.trim()) {
+            document.getElementById('chatMicBtn').style.display = 'flex';
+            document.getElementById('chatSendBtn').style.display = 'none';
+        }
+    }
+};
 
 // We wait 1 second for firebase to fully auth before initializing
 setTimeout(() => {
