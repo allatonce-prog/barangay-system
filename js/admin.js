@@ -485,29 +485,22 @@ async function viewAdminRequestDetails(requestId) {
             })()}
             <!-- ===== END PAYMENT SECTION ===== -->
 
-            ${request.status === 'pending' ? `
+            ${request.status !== 'rejected' ? `
                 <div style="margin-bottom: var(--spacing-lg);">
                     <h4 style="margin-bottom: var(--spacing-md);">Update Status</h4>
                     <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="updateRequestStatus('${request.id}', 'processing')">
-                            Start Processing
-                        </button>
-                            Approve
-                        </button>
-                        <button class="btn btn-danger" onclick="showRejectModal('${request.id}')">
-                            Reject
-                        </button>
-                    </div>
-                </div>
-            ` : ''}
-            
-            ${request.status === 'processing' || request.status === 'approved' ? `
-                <div style="margin-bottom: var(--spacing-lg);">
-                    <h4 style="margin-bottom: var(--spacing-md);">Update Status</h4>
-                    <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
-                        <button class="btn btn-secondary" onclick="updateRequestStatus('${request.id}', 'completed')">
-                            Mark as Completed
-                        </button>
+                        ${request.status === 'pending' ? `
+                            <button class="btn btn-primary" onclick="updateRequestStatus('${request.id}', 'processing')">
+                                Approve
+                            </button>
+                        ` : ''}
+                        
+                        ${(request.status === 'processing' || request.status === 'approved') ? `
+                            <button class="btn btn-secondary" onclick="updateRequestStatus('${request.id}', 'completed')">
+                                Mark as Completed
+                            </button>
+                        ` : ''}
+
                         <button class="btn btn-danger" onclick="showRejectModal('${request.id}')">
                             Reject
                         </button>
