@@ -131,16 +131,11 @@ function setupEventListeners() {
         logoutBtn.addEventListener('click', handleLogout);
     }
 
-    // Digital ID / Admin Settings button
-    const digitalIdBtn = document.getElementById('digitalIdBtn');
-    if (digitalIdBtn) {
-        digitalIdBtn.addEventListener('click', () => {
-            // Admin → show barangay settings; Resident → show digital ID
-            if (AppState.currentUser && AppState.currentUser.role === 'admin') {
-                showAdminSettingsModal();
-            } else {
-                showDigitalIdModal();
-            }
+    // Admin Settings button (replaces old Digital ID menu item)
+    const adminSettingsBtn = document.getElementById('adminSettingsBtn');
+    if (adminSettingsBtn) {
+        adminSettingsBtn.addEventListener('click', () => {
+            showAdminSettingsModal();
             document.getElementById('userMenu').style.display = 'none';
         });
     }
@@ -758,17 +753,9 @@ function showApp() {
 
         navigateToPage('admin-dashboard');
 
-        // 🔧 Swap "Digital ID" button → "Barangay Settings" for admin
-        const digitalIdBtn = document.getElementById('digitalIdBtn');
-        if (digitalIdBtn) {
-            digitalIdBtn.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"></path>
-                </svg>
-                Barangay Settings
-            `;
-        }
+        // Show admin settings button
+        const adminSettingsBtn = document.getElementById('adminSettingsBtn');
+        if (adminSettingsBtn) adminSettingsBtn.style.display = 'flex';
     } else {
         document.getElementById('residentNav').style.display = 'flex';
         document.getElementById('adminNav').style.display = 'none';
@@ -1429,9 +1416,9 @@ function showScannerModal() {
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     <span>Upload</span>
                 </button>
-                <button class="scanner-tab" onclick="switchScannerTab(this, 'myqr')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
-                    <span>My QR</span>
+                <button class="scanner-tab" onclick="stopScannerAndClose(); setTimeout(() => showDigitalIdModal(), 150);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="15" y1="16" x2="17" y2="16"/></svg>
+                    <span>Digital ID</span>
                 </button>
             </div>
 
@@ -1450,18 +1437,6 @@ function showScannerModal() {
                     <p style="margin-top: 1rem; font-weight: 700; color: var(--text-primary);">Choose from Gallery</p>
                     <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">Select an image with a QR code</p>
                     <input type="file" id="qrFileInput" accept="image/*" style="display: none;" onchange="handleQrFileUpload(this)">
-                </div>
-            </div>
-
-            <div id="myqrTabContent" class="tab-content">
-                <div class="my-qr-tab-content">
-                    <div class="my-qr-container">
-                        <div id="myQrCodeDisplay"></div>
-                    </div>
-                    <div class="my-qr-info">
-                        <h4 id="myQrName">Member Name</h4>
-                        <p id="myQrId">ID: BRGY-001</p>
-                    </div>
                 </div>
             </div>
 
