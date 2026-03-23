@@ -564,6 +564,67 @@ function injectChatStyles() {
         .chat-input::placeholder {
             color: #8E8E93;
         }
+        .chat-user-list-view {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .user-list-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 0.5px solid rgba(0,0,0,0.05);
+        }
+
+        .user-list-item:hover {
+            background: rgba(10, 124, 255, 0.05);
+        }
+
+        .user-list-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-list-info {
+            flex: 1;
+        }
+
+        .user-list-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #000;
+            margin-bottom: 2px;
+        }
+
+        .user-list-role {
+            font-size: 0.8rem;
+            color: #8E8E93;
+        }
+
+        .chat-new-chat-btn {
+            background: none;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            color: #0A7CFF;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .chat-new-chat-btn:hover {
+            background: rgba(10, 124, 255, 0.1);
+        }
         .chat-send-btn {
             background: #0A7CFF;
             color: white;
@@ -723,6 +784,7 @@ function injectChatStyles() {
     document.head.appendChild(style);
 }
 
+
 function initChatWidget() {
     if (!AppState.currentUser) return;
     if (document.getElementById('chatWindow')) return; // Prevent duplicate widgets
@@ -807,11 +869,13 @@ function initChatWidget() {
                     <p id="chatHeaderStatus">We usually reply instantly</p>
                 </div>
             </div>
-            <!-- chatCloseBtn removed by user request -->
+            <button class="chat-new-chat-btn" id="chatNewChatBtn" title="New Chat">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
         </div>
 
         <!-- Inbox View (Admin Only) -->
-        <div class="chat-inbox-view" id="chatInboxView" style="display: none; height: 100%; flex-direction: column;">
+        <div class="chat-inbox-view" id="chatInboxView" style="display: none; flex: 1; flex-direction: column;">
             <div class="chat-search-wrap" style="padding: 10px 16px; background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 5;">
                 <div style="position: relative; display: flex; align-items: center;">
                     <svg style="position: absolute; left: 12px; color: #8E8E93;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -820,6 +884,19 @@ function initChatWidget() {
             </div>
             <div class="chat-inbox-list" id="chatInboxList" style="flex: 1; overflow-y: auto;">
                 <div style="padding: 30px; text-align: center; color: var(--text-secondary); font-size: 0.95rem;">Loading chats...</div>
+            </div>
+        </div>
+
+        <!-- New Chat / User List View -->
+        <div class="chat-user-list-view" id="chatUserListView">
+            <div class="chat-search-wrap" style="padding: 10px 16px; background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 5;">
+                <div style="position: relative; display: flex; align-items: center;">
+                    <svg style="position: absolute; left: 12px; color: #8E8E93;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="chatUserSearch" placeholder="Search residents..." style="width: 100%; background: #F2F2F7; border: none; padding: 10px 12px 10px 38px; border-radius: 12px; font-size: 1rem; outline: none;">
+                </div>
+            </div>
+            <div id="chatUserListContent" style="flex: 1; overflow-y: auto;">
+                <div style="padding: 30px; text-align: center; color: var(--text-secondary);">Loading users...</div>
             </div>
         </div>
 
@@ -876,6 +953,8 @@ function initChatWidget() {
             document.getElementById('chatHeaderName').textContent = 'Messages';
             document.getElementById('chatHeaderStatus').textContent = 'Inbox';
             document.getElementById('chatBackBtn').style.display = 'none';
+            document.getElementById('chatNewChatBtn').style.display = 'flex';
+            document.getElementById('chatNewChatBtn').onclick = showNewChatList;
         } else if (!isAdmin) {
             openConversation(AppState.currentUser.id, 'Brgy ONE Admin', true);
         }
@@ -1030,6 +1109,16 @@ function initChatWidget() {
     // Remove duplicate chatCloseBtn listener
 
     document.getElementById('chatBackBtn').addEventListener('click', () => {
+        if (document.getElementById('chatUserListView').style.display === 'flex') {
+            document.getElementById('chatUserListView').style.display = 'none';
+            document.getElementById('chatInboxView').style.display = 'flex';
+            document.getElementById('chatNewChatBtn').style.display = 'flex';
+            document.getElementById('chatBackBtn').style.display = 'none';
+            document.getElementById('chatHeaderName').textContent = 'Messages';
+            document.getElementById('chatHeaderStatus').textContent = 'Inbox';
+            return;
+        }
+
         currentChatConversationId = null;
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
         if (activeChatSummaryUnsubscribe) { activeChatSummaryUnsubscribe(); activeChatSummaryUnsubscribe = null; }
@@ -1042,6 +1131,10 @@ function initChatWidget() {
         document.getElementById('chatHeaderName').textContent = 'Messages';
         document.getElementById('chatHeaderStatus').textContent = 'Inbox';
         document.getElementById('chatBackBtn').style.display = 'none';
+        
+        if (AppState.currentUser.role === 'admin') {
+            document.getElementById('chatNewChatBtn').style.display = 'flex';
+        }
     });
 
     document.getElementById('chatSendBtn').addEventListener('click', () => sendMessage());
@@ -1227,6 +1320,81 @@ function initChatWidget() {
         if (pendingImageFiles.length === 0) {
             document.getElementById('chatImagePreview').style.display = 'none';
         }
+    };
+
+    // Admin New Chat Logic
+    window.showNewChatList = async () => {
+        document.getElementById('chatInboxView').style.display = 'none';
+        document.getElementById('chatUserListView').style.display = 'flex';
+        document.getElementById('chatNewChatBtn').style.display = 'none';
+        document.getElementById('chatBackBtn').style.display = 'block';
+        document.getElementById('chatHeaderName').textContent = 'New Chat';
+        document.getElementById('chatHeaderStatus').textContent = 'Select a resident';
+        await fetchRegisteredUsers();
+    };
+
+    let allUsers = [];
+    async function fetchRegisteredUsers() {
+        const userListContent = document.getElementById('chatUserListContent');
+        userListContent.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--text-secondary);">Loading users...</div>';
+        try {
+            const snapshot = await window.DB.firestore.collection('USERS').get();
+            allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            displayUserList(allUsers);
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            userListContent.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--text-secondary); color: #FF3B30;">Error loading users.</div>';
+        }
+    }
+
+    function displayUserList(users) {
+        const userListContent = document.getElementById('chatUserListContent');
+        console.log("[Chat] Displaying users:", users.length);
+        
+        const residents = users.filter(u => u.role !== 'admin' && (u.fullName || u.email));
+        
+        if (residents.length === 0) {
+            userListContent.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--text-secondary);">No residents found.</div>';
+            return;
+        }
+        
+        let userListHtml = '';
+        residents.forEach(user => {
+            const name = user.fullName || user.email || 'Unknown User';
+            const avatar = user.photoURL || user.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+            userListHtml += `
+                <div class="user-list-item" onclick="selectChatConversation('${user.id}', '${name.replace(/'/g, "\\'")}', '${avatar}', '${user.id}')">
+                    <img src="${avatar}" class="user-list-avatar">
+                    <div class="user-list-info">
+                        <p class="user-list-name">${name}</p>
+                        <p class="user-list-role">${user.role || 'Resident'}</p>
+                    </div>
+                </div>
+            `;
+        });
+        userListContent.innerHTML = userListHtml;
+    }
+
+    document.getElementById('chatUserSearch').addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const filteredUsers = allUsers.filter(user => 
+            user.role !== 'admin' && 
+            ((user.fullName && user.fullName.toLowerCase().includes(query)) || 
+             (user.email && user.email.toLowerCase().includes(query)))
+        );
+        displayUserList(filteredUsers);
+    });
+
+    window.selectChatConversation = (userId, userName, userAvatar, participantId) => {
+        // Hide user list and show chat body
+        document.getElementById('chatUserListView').style.display = 'none';
+        document.getElementById('chatBody').style.display = 'flex';
+        document.getElementById('chatInputArea').style.display = 'flex';
+        document.getElementById('chatNewChatBtn').style.display = 'none'; // Hide new chat button when in a conversation
+        document.getElementById('chatBackBtn').style.display = 'block'; // Show back button
+
+        // Open conversation with the selected user
+        openConversation(userId, userName, false, userAvatar);
     };
 
     // Start Realtime Listeners
@@ -1638,49 +1806,6 @@ async function sendMessage(manualText = null, manualAudioUrl = null) {
 }
 
 // Initialize on load if logged in, or export for login hook
-function toggleVoicePlayback(btn, url) {
-    let audio = btn._audio;
-    const progress = btn.parentElement.querySelector('.voice-progress-bar');
-    const timer = btn.parentElement.querySelector('.voice-timer');
-
-    if (!audio) {
-        audio = new Audio(url);
-        btn._audio = audio;
-        
-        audio.ontimeupdate = () => {
-            if (audio.duration) {
-                const perc = (audio.currentTime / audio.duration) * 100;
-                progress.style.width = perc + '%';
-            }
-            
-            const mins = Math.floor(audio.currentTime / 60);
-            const secs = Math.floor(audio.currentTime % 60);
-            timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        };
-        
-        audio.onended = () => {
-            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-            progress.style.width = '0%';
-            timer.textContent = 'VOICE';
-        };
-
-        audio.onloadedmetadata = () => {
-             const mins = Math.floor(audio.duration / 60);
-             const secs = Math.floor(audio.duration % 60);
-             timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        };
-    }
-
-    if (audio.paused) {
-        document.querySelectorAll('audio').forEach(a => a.pause()); // Pause others
-        audio.play();
-        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-    } else {
-        audio.pause();
-        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-    }
-}
-
 window.toggleVoicePlayback = toggleVoicePlayback;
 window.initChatWidget = initChatWidget;
 window.submitReaction = submitReaction;
