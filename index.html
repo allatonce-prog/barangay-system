@@ -537,65 +537,109 @@
 
     <!-- Service Worker Registration & Version Manager -->
     <script>
+        // Store service worker registration globally for easier access
+        window.swRegistration = null;
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
+                // Register service worker with timestamp to bust cache in registration check
+                navigator.serviceWorker.register('./service-worker.js?t=' + Date.now())
                     .then(registration => {
-                        console.log('Service Worker registered successfully:', registration.scope);
+                        window.swRegistration = registration;
+                        console.log('✅ Service Worker registered successfully:', registration.scope);
 
-                        // Listen for updates to the service worker itself
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            if (newWorker) {
-                                newWorker.addEventListener('statechange', () => {
-                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                        console.log('SW Update found, forcing refresh...');
-                                        forceAppUpdate();
+                        // Watch for updates starting from here
+                        registration.onupdatefound = () => {
+                            const installingWorker = registration.installing;
+                            if (installingWorker == null) return;
+
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        // New update found! Trigger reload
+                                        console.log('🚀 Service Worker update installed, forcing refresh...');
+                                        if (typeof showToast === 'function') {
+                                            showToast('🎉 Application updated! Reloading...', 'success');
+                                        }
+                                        setTimeout(() => forceAppUpdate(), 1000);
+                                    } else {
+                                        // Content is cached for offline use for the first time
+                                        console.log('📦 Content is now cached for offline use.');
                                     }
-                                });
-                            }
-                        });
+                                }
+                            };
+                        };
+
+                        // Check for updates frequently
+                        setInterval(() => {
+                            registration.update().catch(e => console.debug('Periodic SW update failed:', e));
+                        }, 300000); // Check SW every 5 minutes
                     })
                     .catch(error => {
-                        console.log('Service Worker registration failed:', error);
+                        console.error('❌ Service Worker registration failed:', error);
                     });
             });
         }
 
-        // Active version manager: bypass caches to check server version.js
-        function checkForUpdates() {
+        // Active version manager: bypass browser and service-worker caches to check server version.js
+        async function checkForUpdates() {
             if (!window.APP_VERSION) return;
-            // Fetch version.js with timestamp query to bust browser cache
-            fetch(`./js/version.js?t=${new Date().getTime()}`)
-                .then(response => response.text())
-                .then(text => {
-                    const match = text.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
-                    if (match && match[1]) {
-                        const serverVersion = match[1];
-                        if (serverVersion !== window.APP_VERSION) {
-                            console.log(`Version mismatch! Current: ${window.APP_VERSION}, Server: ${serverVersion}`);
-                            forceAppUpdate();
+            
+            console.log('🔍 Checking for app updates...');
+            
+            try {
+                // First, try to update service worker manually if online
+                if (navigator.onLine && window.swRegistration) {
+                    await window.swRegistration.update();
+                }
+
+                // Fetch version.js with maximum cache busting (timestamp + cache: no-store)
+                const response = await fetch(`./js/version.js?t=${Date.now()}`, { 
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const text = await response.text();
+                const match = text.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+                
+                if (match && match[1]) {
+                    const serverVersion = match[1];
+                    if (serverVersion !== window.APP_VERSION) {
+                        console.log(`🚀 Update Identified! Local: ${window.APP_VERSION}, Server: ${serverVersion}`);
+                        
+                        if (typeof showToast === 'function') {
+                            showToast('📢 New update detected. Applying fixes...', 'info', 5000);
                         }
+                        
+                        // Give time for user to see the toast, then purge and reload
+                        setTimeout(() => forceAppUpdate(), 2000);
+                    } else {
+                        console.log('✨ All systems up to date.');
                     }
-                })
-                .catch(err => console.debug('Version check skipped or offline:', err));
+                }
+            } catch (err) {
+                console.debug('Skip version check (likely offline or cache-busted request failed):', err);
+            }
         }
 
         function forceAppUpdate() {
-            // Unregister service workers and clear caches
+            // Hard purge: unregister all workers and clear ALL caches before reload
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(registrations => {
-                    for (let registration of registrations) {
-                        registration.unregister();
-                    }
+                    const unregisterPromises = registrations.map(reg => reg.unregister());
+                    return Promise.all(unregisterPromises);
                 }).then(() => {
                     if (window.caches) {
-                        caches.keys().then(names => {
-                            for (let name of names) caches.delete(name);
+                        return caches.keys().then(names => {
+                            return Promise.all(names.map(name => caches.delete(name)));
                         });
                     }
-                    // Hard reload to fetch new assets from server
-                    window.location.reload(true);
+                }).then(() => {
+                    console.log('🧹 Purge complete. Hard reloading...');
+                    // Use a unique parameter to bypass any intermediate proxy caches
+                    window.location.href = window.location.pathname + '?v=' + Date.now();
                 });
             } else {
                 window.location.reload(true);
@@ -606,21 +650,36 @@
         window.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') checkForUpdates();
         });
-        window.addEventListener('online', checkForUpdates);
 
-        // Initial check on load
-        setTimeout(checkForUpdates, 3000);
+        // Robust Online Listener - Force check when internet restored
+        window.addEventListener('online', () => {
+            console.log('🌐 Connection restored! Syncing updates...');
+            if (typeof showToast === 'function') {
+                showToast('🌐 Internet restored! Checking for latest updates...', 'success');
+            }
+            // Mandatory check when online status is regained
+            setTimeout(checkForUpdates, 1500); 
+        });
 
-        // Check occasionally while app is open (every 1 min)
-        setInterval(checkForUpdates, 60000);
+        // Initial check shortly after load
+        setTimeout(checkForUpdates, 5000);
 
-        // Display app version
-        if (window.APP_VERSION) {
-            const versionElement = document.getElementById('appVersion');
-            if (versionElement) {
-                versionElement.textContent = window.APP_VERSION;
+        // Occasional passive check while app is open (every 10 min)
+        setInterval(checkForUpdates, 600000);
+
+        // Sync display app version
+        function updateVersionDisplay() {
+            if (window.APP_VERSION) {
+                const versionElement = document.getElementById('appVersion');
+                if (versionElement) {
+                    versionElement.textContent = window.APP_VERSION;
+                }
             }
         }
+        
+        // Ensure version is displayed
+        updateVersionDisplay();
+        setTimeout(updateVersionDisplay, 1500);
     </script>
     <!-- Mandatory PWA Installation Overlay -->
     <div id="installOverlay" class="install-overlay"></div>
